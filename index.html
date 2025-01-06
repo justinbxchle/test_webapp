@@ -76,14 +76,35 @@
                             permissionButton.style.display = 'none';
                         } else {
                             alert('Accelerometer-Zugriff wurde verweigert.');
+
+                            window.addEventListener('mousemove', handleMouseMove);
+
                         }
                     })
                     .catch(console.error);
             } else {
                 // For browsers that don't require permission
-                window.addEventListener('deviceorientation', handleOrientation);
-                permissionButton.style.display = 'none';
+                // For browsers that don't require permission or don't support accelerometer
+                if (window.DeviceOrientationEvent) {
+                    window.addEventListener('deviceorientation', handleOrientation);
+                    permissionButton.style.display = 'none';
+                } else {
+                    // Completely fall back to mouse tracking if no accelerometer support
+                    window.addEventListener('mousemove', handleMouseMove);
+                }
             }
+        }
+
+        function handleMouseMove(event) {
+            // Convert mouse coordinates to orientation-like data
+            const x = (event.clientX / window.innerWidth) * 180 - 90;  // Normalize to -90 to 90 range
+            const y = (event.clientY / window.innerHeight) * 180 - 90;
+    
+            // Call the same handling function used for device orientation
+            handleOrientation({
+            beta: y,   // vertical tilt (mouse Y)
+            gamma: x   // horizontal tilt (mouse X)
+            });
         }
 
         function handleOrientation(event) {
