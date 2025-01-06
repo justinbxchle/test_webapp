@@ -40,9 +40,11 @@
     </style>
 </head>
 <body>
-    <div class="info">Steuere den Spieler mit dem Accelerometer!</div>
+    <div class="info" id="test">Steuere den Spieler mit dem Accelerometer!</div>
     <canvas id="gameCanvas"></canvas>
     <button id="permissionButton" class="permission-button" style="display: none;">Aktiviere Steuerung</button>
+    <button id="pauseButton" class="pause-button">Pause</button>
+
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -64,8 +66,21 @@
         let tiltX = 0;
         let tiltY = 0;
 
+        let pause = false;
+
         // Request permission for accelerometer usage
         const permissionButton = document.getElementById('permissionButton');
+
+        window.addEventListener('mousemove', handleMouseMove);
+
+
+        const pauseButton = document.getElementById('pauseButton');
+
+        window.addEventListener('pause', handlePause)
+
+        function handlePause() {
+            pause = !pause
+        }
 
         function requestPermission() {
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -83,15 +98,9 @@
                     })
                     .catch(console.error);
             } else {
-                // For browsers that don't require permission
-                // For browsers that don't require permission or don't support accelerometer
-                if (window.DeviceOrientationEvent) {
-                    window.addEventListener('deviceorientation', handleOrientation);
-                    permissionButton.style.display = 'none';
-                } else {
-                    // Completely fall back to mouse tracking if no accelerometer support
-                    window.addEventListener('mousemove', handleMouseMove);
-                }
+                // No permission required, check device orientation support
+                window.addEventListener('mousemove', handleMouseMove);
+
             }
         }
 
@@ -99,17 +108,20 @@
             // Convert mouse coordinates to orientation-like data
             const x = (event.clientX / window.innerWidth) * 180 - 90;  // Normalize to -90 to 90 range
             const y = (event.clientY / window.innerHeight) * 180 - 90;
+
+            tiltX = x;
+            tiltY = y;
+
+            const test = document.getElementById("test");
+
+            test.innerText = x
     
-            // Call the same handling function used for device orientation
-            handleOrientation({
-            beta: y,   // vertical tilt (mouse Y)
-            gamma: x   // horizontal tilt (mouse X)
-            });
+            
         }
 
         function handleOrientation(event) {
-            tiltX = event.gamma || 0; // Left to right
-            tiltY = event.beta || 0; // Front to back
+            tiltX = event.gamma | null; // Left to right
+            tiltY = event.beta | null; // Front to back
         }
 
         if (typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -164,7 +176,7 @@
                 y = Math.random() * canvas.height;
             }
 
-            zombies.push({ x, y, radius: 15, color: 'red' });
+            zombies.push({ x, y, radius: 10, color: 'red' });
         }
 
         function drawZombies() {
@@ -237,7 +249,9 @@
         }
 
         setInterval(spawnZombie, 1000);
-        gameLoop();
+        if (!pause) {
+            gameLoop();
+        }
     </script>
 </body>
 </html>
