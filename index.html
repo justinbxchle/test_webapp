@@ -23,11 +23,26 @@
             font-family: Arial, sans-serif;
             z-index: 10;
         }
+
+        .permission-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="info">Steuere den Spieler mit dem Accelerometer!</div>
     <canvas id="gameCanvas"></canvas>
+    <button id="permissionButton" class="permission-button" style="display: none;">Aktiviere Steuerung</button>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -48,11 +63,39 @@
         let tiltX = 0;
         let tiltY = 0;
 
-        // Event Listener for Accelerometer
-        window.addEventListener('deviceorientation', (event) => {
+        // Request permission for accelerometer usage
+        const permissionButton = document.getElementById('permissionButton');
+
+        function requestPermission() {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then((response) => {
+                        if (response === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            permissionButton.style.display = 'none';
+                        } else {
+                            alert('Accelerometer-Zugriff wurde verweigert.');
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // For browsers that don't require permission
+                window.addEventListener('deviceorientation', handleOrientation);
+                permissionButton.style.display = 'none';
+            }
+        }
+
+        function handleOrientation(event) {
             tiltX = event.gamma || 0; // Left to right
             tiltY = event.beta || 0; // Front to back
-        });
+        }
+
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            permissionButton.style.display = 'block';
+            permissionButton.addEventListener('click', requestPermission);
+        } else {
+            window.addEventListener('deviceorientation', handleOrientation);
+        }
 
         function drawPlayer() {
             ctx.beginPath();
