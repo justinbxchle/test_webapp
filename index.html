@@ -55,6 +55,7 @@
             y: canvas.height / 2,
             radius: 20,
             color: 'blue',
+            direction: { x: 0, y: 1 }, // Initial direction facing down
         };
 
         const zombies = [];
@@ -98,11 +99,30 @@
         }
 
         function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+
+            // Calculate rotation based on direction
+            const angle = Math.atan2(player.direction.y, player.direction.x);
+            ctx.rotate(angle);
+
+            // Draw body (circle)
             ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
             ctx.fillStyle = player.color;
             ctx.fill();
             ctx.closePath();
+
+            // Draw front (triangle)
+            ctx.beginPath();
+            ctx.moveTo(player.radius, 0);
+            ctx.lineTo(player.radius / 2, -player.radius / 2);
+            ctx.lineTo(player.radius / 2, player.radius / 2);
+            ctx.closePath();
+            ctx.fillStyle = 'white';
+            ctx.fill();
+
+            ctx.restore();
         }
 
         function spawnZombie() {
@@ -139,6 +159,13 @@
         function updatePlayer() {
             player.x += tiltX * 0.5;
             player.y += tiltY * 0.5;
+
+            // Update direction
+            if (tiltX !== 0 || tiltY !== 0) {
+                const magnitude = Math.sqrt(tiltX * tiltX + tiltY * tiltY);
+                player.direction.x = tiltX / magnitude;
+                player.direction.y = tiltY / magnitude;
+            }
 
             // Boundaries
             player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
