@@ -24,7 +24,8 @@
       }
 
       .permission-button,
-      .pause-button .shoot-button {
+      .pause-button,
+      .shoot-button {
         position: absolute;
         top: 50%;
         left: 50%;
@@ -65,7 +66,7 @@
     <button id="pauseButton" class="pause-button" style="display: none">
       Pause
     </button>
-    <button id="shootButton" class="shoot-button" style="display: block">
+    <button id="shootButton" class="shoot-button" style="display: none">
       Shoot
     </button>
 
@@ -126,6 +127,7 @@
         if (controlMode === "accelerometer") {
           infoText.innerText = "Controlling with Accelerometer";
           pauseButton.style.display = "block";
+          shootButton.style.display = "block";
         }
       }
 
