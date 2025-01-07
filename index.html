@@ -72,7 +72,7 @@
       let tiltX = 0;
       let tiltY = 0;
       let controlMode = "none"; // 'accelerometer' or 'mouse'
-      let accelerometerValid = false; // Flag to check if accelerometer data is valid
+      let accelerometerValid = false; // Check if accelerometer works
 
       function handleMouseMove(event) {
         const x = (event.clientX / window.innerWidth) * 180 - 90;
@@ -119,7 +119,13 @@
         } else {
           controlMode = "accelerometer";
           window.addEventListener("deviceorientation", handleOrientation);
-          permissionButton.style.display = "none";
+
+          // Add a timeout to detect if accelerometer provides valid data
+          setTimeout(() => {
+            if (!accelerometerValid) {
+              fallbackToMouse();
+            }
+          }, 1000); // Check after 1 second
         }
       }
 
@@ -144,13 +150,14 @@
           } else {
             controlMode = "accelerometer";
             window.addEventListener("deviceorientation", handleOrientation);
+            infoText.innerText = "Accelerometer control enabled.";
 
-            // Add a timeout to detect if accelerometer provides valid data
+            // Add a timeout to detect valid accelerometer data
             setTimeout(() => {
               if (!accelerometerValid) {
                 fallbackToMouse();
               }
-            }, 1000); // Check after 1 second
+            }, 1000);
           }
         } else {
           fallbackToMouse();
@@ -158,16 +165,40 @@
       }
 
       function drawPlayer() {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+
+        // Calculate rotation based on direction
+        const angle = Math.atan2(player.direction.y, player.direction.x);
+        ctx.rotate(angle);
+
         ctx.beginPath();
-        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
         ctx.fillStyle = player.color;
         ctx.fill();
         ctx.closePath();
+        // Draw front (triangle)
+        ctx.beginPath();
+        ctx.moveTo(player.radius, 0);
+        ctx.lineTo(player.radius / 2, -player.radius / 2);
+        ctx.lineTo(player.radius / 2, player.radius / 2);
+        ctx.closePath();
+        ctx.fillStyle = "white";
+        ctx.fill();
+
+        ctx.restore();
       }
 
       function updatePlayer() {
         player.x += tiltX * 0.5;
         player.y += tiltY * 0.5;
+
+        // Update direction
+        if (tiltX !== 0 || tiltY !== 0) {
+          const magnitude = Math.sqrt(tiltX * tiltX + tiltY * tiltY);
+          player.direction.x = tiltX / magnitude;
+          player.direction.y = tiltY / magnitude;
+        }
 
         player.x = Math.max(
           player.radius,
@@ -179,15 +210,80 @@
         );
       }
 
+      function spawnZombie() {
+        const side = Math.floor(Math.random() * 4);
+        let x, y;
+
+        if (side === 0) {
+          x = Math.random() * canvas.width;
+          y = -20;
+        } else if (side === 1) {
+          x = canvas.width + 20;
+          y = Math.random() * canvas.height;
+        } else if (side === 2) {
+          x = Math.random() * canvas.width;
+          y = canvas.height + 20;
+        } else {
+          x = -20;
+          y = Math.random() * canvas.height;
+        }
+
+        zombies.push({ x, y, radius: 10, color: "red" });
+      }
+
+      function drawZombies() {
+        zombies.forEach((zombie) => {
+          ctx.beginPath();
+          ctx.arc(zombie.x, zombie.y, zombie.radius, 0, Math.PI * 2);
+          ctx.fillStyle = zombie.color;
+          ctx.fill();
+          ctx.closePath();
+        });
+      }
+
+      function updateZombies() {
+        zombies.forEach((zombie) => {
+          const dx = player.x - zombie.x;
+          const dy = player.y - zombie.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          zombie.x += (dx / dist) * zombieSpeed;
+          zombie.y += (dy / dist) * zombieSpeed;
+        });
+      }
+
+      function checkCollisions() {
+        zombies.forEach((zombie, index) => {
+          const dx = player.x - zombie.x;
+          const dy = player.y - zombie.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < player.radius + zombie.radius) {
+            alert("Game Over!");
+            resetGame();
+          }
+        });
+      }
+
+      function resetGame() {
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+        zombies.length = 0;
+      }
+
       function gameLoop() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         drawPlayer();
         updatePlayer();
+        drawZombies();
+        updateZombies();
+        checkCollisions();
 
         requestAnimationFrame(gameLoop);
       }
 
+      setInterval(spawnZombie, 1000);
       initializeControls();
       gameLoop();
     </script>
