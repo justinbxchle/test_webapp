@@ -1,257 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zombie Game</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #333;
-        }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #333;
+      }
 
-        canvas {
-            display: block;
-        }
+      canvas {
+        display: block;
+      }
 
-        .info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-family: Arial, sans-serif;
-            z-index: 10;
-        }
+      .info {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-family: Arial, sans-serif;
+        z-index: 10;
+      }
 
-        .permission-button {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 10px 20px;
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-        }
+      .permission-button {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+      }
     </style>
-</head>
-<body>
-    <div class="info" id="test">Steuere den Spieler mit dem Accelerometer!</div>
+  </head>
+  <body>
+    <div class="info" id="infoText">Checking device capabilities...</div>
     <canvas id="gameCanvas"></canvas>
-    <button id="permissionButton" class="permission-button" style="display: none;">Aktiviere Steuerung</button>
-    <button id="pauseButton" class="pause-button">Pause</button>
-
+    <button
+      id="permissionButton"
+      class="permission-button"
+      style="display: none"
+    >
+      Enable Accelerometer
+    </button>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
 
-        const player = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 20,
-            color: 'blue',
-            direction: { x: 0, y: 1 }, // Initial direction facing down
-        };
+      const infoText = document.getElementById("infoText");
+      const permissionButton = document.getElementById("permissionButton");
 
-        const zombies = [];
-        const zombieSpeed = 2;
+      const player = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        radius: 20,
+        color: "blue",
+        direction: { x: 0, y: 1 },
+      };
 
-        let tiltX = 0;
-        let tiltY = 0;
+      const zombies = [];
+      const zombieSpeed = 2;
+      let tiltX = 0;
+      let tiltY = 0;
+      let controlMode = "none"; // 'accelerometer' or 'mouse'
+      let accelerometerValid = false; // Flag to check if accelerometer data is valid
 
-        let pause = false;
+      function handleMouseMove(event) {
+        const x = (event.clientX / window.innerWidth) * 180 - 90;
+        const y = (event.clientY / window.innerHeight) * 180 - 90;
 
-        // Request permission for accelerometer usage
-        const permissionButton = document.getElementById('permissionButton');
+        tiltX = x;
+        tiltY = y;
 
-        window.addEventListener('mousemove', handleMouseMove);
+        if (controlMode === "mouse") {
+          infoText.innerText = "Controlling with Mouse";
+        }
+      }
 
-
-        const pauseButton = document.getElementById('pauseButton');
-
-        window.addEventListener('pause', handlePause)
-
-        function handlePause() {
-            pause = !pause
+      function handleOrientation(event) {
+        if (event.gamma === null || event.beta === null) {
+          fallbackToMouse();
+          return;
         }
 
-        function requestPermission() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then((response) => {
-                        if (response === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation);
-                            permissionButton.style.display = 'none';
-                        } else {
-                            alert('Accelerometer-Zugriff wurde verweigert.');
+        accelerometerValid = true;
+        tiltX = event.gamma || 0;
+        tiltY = event.beta || 0;
 
-                            window.addEventListener('mousemove', handleMouseMove);
-
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // No permission required, check device orientation support
-                window.addEventListener('mousemove', handleMouseMove);
-
-            }
+        if (controlMode === "accelerometer") {
+          infoText.innerText = "Controlling with Accelerometer";
         }
+      }
 
-        function handleMouseMove(event) {
-            // Convert mouse coordinates to orientation-like data
-            const x = (event.clientX / window.innerWidth) * 180 - 90;  // Normalize to -90 to 90 range
-            const y = (event.clientY / window.innerHeight) * 180 - 90;
-
-            tiltX = x;
-            tiltY = y;
-
-            const test = document.getElementById("test");
-
-            test.innerText = x
-    
-            
-        }
-
-        function handleOrientation(event) {
-            tiltX = event.gamma | null; // Left to right
-            tiltY = event.beta | null; // Front to back
-        }
-
-        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-            permissionButton.style.display = 'block';
-            permissionButton.addEventListener('click', requestPermission);
+      function requestAccelerometerPermission() {
+        if (typeof DeviceOrientationEvent.requestPermission === "function") {
+          DeviceOrientationEvent.requestPermission()
+            .then((response) => {
+              if (response === "granted") {
+                controlMode = "accelerometer";
+                window.addEventListener("deviceorientation", handleOrientation);
+                permissionButton.style.display = "none";
+              } else {
+                fallbackToMouse();
+              }
+            })
+            .catch(() => {
+              fallbackToMouse();
+            });
         } else {
-            window.addEventListener('deviceorientation', handleOrientation);
+          controlMode = "accelerometer";
+          window.addEventListener("deviceorientation", handleOrientation);
+          permissionButton.style.display = "none";
         }
+      }
 
-        function drawPlayer() {
-            ctx.save();
-            ctx.translate(player.x, player.y);
+      function fallbackToMouse() {
+        controlMode = "mouse";
+        window.addEventListener("mousemove", handleMouseMove);
+        permissionButton.style.display = "none";
+        infoText.innerText =
+          "Controlling with Mouse (Accelerometer unavailable)";
+      }
 
-            // Calculate rotation based on direction
-            const angle = Math.atan2(player.direction.y, player.direction.x);
-            ctx.rotate(angle);
+      function initializeControls() {
+        if (window.DeviceOrientationEvent) {
+          if (typeof DeviceOrientationEvent.requestPermission === "function") {
+            permissionButton.style.display = "block";
+            permissionButton.addEventListener(
+              "click",
+              requestAccelerometerPermission
+            );
+            infoText.innerText =
+              "Click the button to enable Accelerometer control.";
+          } else {
+            controlMode = "accelerometer";
+            window.addEventListener("deviceorientation", handleOrientation);
 
-            // Draw body (circle)
-            ctx.beginPath();
-            ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
-            ctx.fillStyle = player.color;
-            ctx.fill();
-            ctx.closePath();
-
-            // Draw front (triangle)
-            ctx.beginPath();
-            ctx.moveTo(player.radius, 0);
-            ctx.lineTo(player.radius / 2, -player.radius / 2);
-            ctx.lineTo(player.radius / 2, player.radius / 2);
-            ctx.closePath();
-            ctx.fillStyle = 'white';
-            ctx.fill();
-
-            ctx.restore();
+            // Add a timeout to detect if accelerometer provides valid data
+            setTimeout(() => {
+              if (!accelerometerValid) {
+                fallbackToMouse();
+              }
+            }, 1000); // Check after 1 second
+          }
+        } else {
+          fallbackToMouse();
         }
+      }
 
-        function spawnZombie() {
-            const side = Math.floor(Math.random() * 4); // 0 = top, 1 = right, 2 = bottom, 3 = left
-            let x, y;
+      function drawPlayer() {
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fillStyle = player.color;
+        ctx.fill();
+        ctx.closePath();
+      }
 
-            if (side === 0) {
-                x = Math.random() * canvas.width;
-                y = -20;
-            } else if (side === 1) {
-                x = canvas.width + 20;
-                y = Math.random() * canvas.height;
-            } else if (side === 2) {
-                x = Math.random() * canvas.width;
-                y = canvas.height + 20;
-            } else {
-                x = -20;
-                y = Math.random() * canvas.height;
-            }
+      function updatePlayer() {
+        player.x += tiltX * 0.5;
+        player.y += tiltY * 0.5;
 
-            zombies.push({ x, y, radius: 10, color: 'red' });
-        }
+        player.x = Math.max(
+          player.radius,
+          Math.min(canvas.width - player.radius, player.x)
+        );
+        player.y = Math.max(
+          player.radius,
+          Math.min(canvas.height - player.radius, player.y)
+        );
+      }
 
-        function drawZombies() {
-            zombies.forEach((zombie) => {
-                ctx.beginPath();
-                ctx.arc(zombie.x, zombie.y, zombie.radius, 0, Math.PI * 2);
-                ctx.fillStyle = zombie.color;
-                ctx.fill();
-                ctx.closePath();
-            });
-        }
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        function updatePlayer() {
-            player.x += tiltX * 0.5;
-            player.y += tiltY * 0.5;
+        drawPlayer();
+        updatePlayer();
 
-            // Update direction
-            if (tiltX !== 0 || tiltY !== 0) {
-                const magnitude = Math.sqrt(tiltX * tiltX + tiltY * tiltY);
-                player.direction.x = tiltX / magnitude;
-                player.direction.y = tiltY / magnitude;
-            }
+        requestAnimationFrame(gameLoop);
+      }
 
-            // Boundaries
-            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
-            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
-        }
-
-        function updateZombies() {
-            zombies.forEach((zombie) => {
-                const dx = player.x - zombie.x;
-                const dy = player.y - zombie.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                zombie.x += (dx / dist) * zombieSpeed;
-                zombie.y += (dy / dist) * zombieSpeed;
-            });
-        }
-
-        function checkCollisions() {
-            zombies.forEach((zombie, index) => {
-                const dx = player.x - zombie.x;
-                const dy = player.y - zombie.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < player.radius + zombie.radius) {
-                    alert('Game Over!');
-                    zombies.splice(index, 1);
-                    resetGame();
-                }
-            });
-        }
-
-        function resetGame() {
-            player.x = canvas.width / 2;
-            player.y = canvas.height / 2;
-            zombies.length = 0;
-        }
-
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            drawPlayer();
-            drawZombies();
-            updatePlayer();
-            updateZombies();
-            checkCollisions();
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        setInterval(spawnZombie, 1000);
-        if (!pause) {
-            gameLoop();
-        }
+      initializeControls();
+      gameLoop();
     </script>
-</body>
+  </body>
 </html>
