@@ -56,7 +56,9 @@
     >
       Enable Accelerometer
     </button>
-    <button id="pauseButton" class="pause-button">Pause</button>
+    <button id="pauseButton" class="pause-button" style="display: none">
+      Pause
+    </button>
 
     <script>
       const canvas = document.getElementById("gameCanvas");
@@ -109,6 +111,7 @@
 
         if (controlMode === "accelerometer") {
           infoText.innerText = "Controlling with Accelerometer";
+          pauseButton.style.display = "block";
         }
       }
 
