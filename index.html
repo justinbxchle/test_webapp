@@ -16,7 +16,6 @@
       }
 
       .info {
-        position: absolute;
         top: 10px;
         left: 10px;
         color: white;
@@ -24,7 +23,8 @@
         z-index: 10;
       }
 
-      .permission-button {
+      .permission-button,
+      .pause-button {
         position: absolute;
         top: 50%;
         left: 50%;
@@ -37,10 +37,17 @@
         font-size: 16px;
         cursor: pointer;
       }
+
+      .pause-button {
+        top: 90%;
+        left: 90%;
+        transform: translate(-50%, -50%);
+      }
     </style>
   </head>
   <body>
     <div class="info" id="infoText">Checking device capabilities...</div>
+    <div class="info" id="pauseText">Pause with ESC or Button</div>
     <canvas id="gameCanvas"></canvas>
     <button
       id="permissionButton"
@@ -49,6 +56,7 @@
     >
       Enable Accelerometer
     </button>
+    <button id="pauseButton" class="pause-button">Pause</button>
 
     <script>
       const canvas = document.getElementById("gameCanvas");
@@ -57,7 +65,9 @@
       canvas.height = window.innerHeight;
 
       const infoText = document.getElementById("infoText");
+      const pauseText = document.getElementById("pauseText");
       const permissionButton = document.getElementById("permissionButton");
+      const pauseButton = document.getElementById("pauseButton");
 
       const player = {
         x: canvas.width / 2,
@@ -73,6 +83,7 @@
       let tiltY = 0;
       let controlMode = "none"; // 'accelerometer' or 'mouse'
       let accelerometerValid = false; // Check if accelerometer works
+      let paused = false;
 
       function handleMouseMove(event) {
         const x = (event.clientX / window.innerWidth) * 180 - 90;
@@ -135,6 +146,8 @@
         permissionButton.style.display = "none";
         infoText.innerText =
           "Controlling with Mouse (Accelerometer unavailable)";
+        pauseText.innerText = "Pause with ESC";
+        pauseButton.style.display = "none";
       }
 
       function initializeControls() {
@@ -228,16 +241,40 @@
           y = Math.random() * canvas.height;
         }
 
-        zombies.push({ x, y, radius: 10, color: "red" });
+        zombies.push({
+          x,
+          y,
+          radius: 10,
+          color: "red",
+          direction: { x: 0, y: 0 }, // Initialize direction
+        });
       }
 
       function drawZombies() {
         zombies.forEach((zombie) => {
+          ctx.save();
+          ctx.translate(zombie.x, zombie.y);
+
+          const angle = Math.atan2(zombie.direction.y, zombie.direction.x);
+          ctx.rotate(angle);
+
+          // Draw body (circle)
           ctx.beginPath();
-          ctx.arc(zombie.x, zombie.y, zombie.radius, 0, Math.PI * 2);
+          ctx.arc(0, 0, zombie.radius, 0, Math.PI * 2);
           ctx.fillStyle = zombie.color;
           ctx.fill();
           ctx.closePath();
+
+          // Draw front (triangle)
+          ctx.beginPath();
+          ctx.moveTo(zombie.radius, 0);
+          ctx.lineTo(zombie.radius / 2, -zombie.radius / 2);
+          ctx.lineTo(zombie.radius / 2, zombie.radius / 2);
+          ctx.closePath();
+          ctx.fillStyle = "white";
+          ctx.fill();
+
+          ctx.restore();
         });
       }
 
@@ -249,10 +286,16 @@
 
           zombie.x += (dx / dist) * zombieSpeed;
           zombie.y += (dy / dist) * zombieSpeed;
+
+          // Update zombie direction
+          zombie.direction.x = dx / dist;
+          zombie.direction.y = dy / dist;
         });
       }
 
       function checkCollisions() {
+        if (paused) return;
+
         zombies.forEach((zombie, index) => {
           const dx = player.x - zombie.x;
           const dy = player.y - zombie.y;
@@ -272,16 +315,34 @@
       }
 
       function gameLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!paused) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        drawPlayer();
-        updatePlayer();
-        drawZombies();
-        updateZombies();
-        checkCollisions();
+          drawPlayer();
+          updatePlayer();
+          drawZombies();
+          updateZombies();
+          checkCollisions();
+        }
 
         requestAnimationFrame(gameLoop);
       }
+
+      function togglePause() {
+        paused = !paused;
+        pauseButton.textContent = paused ? "Resume" : "Pause";
+      }
+
+      pauseButton.addEventListener("click", togglePause);
+
+      document.addEventListener("keydown", (event) => {
+        if (controlMode === "mouse" && event.key === "Escape") {
+          paused = !paused;
+          pauseText.innerText = paused
+            ? "Game Paused (Press ESC to Resume)"
+            : "Pause with ESC";
+        }
+      });
 
       setInterval(spawnZombie, 1000);
       initializeControls();
