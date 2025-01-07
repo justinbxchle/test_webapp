@@ -23,6 +23,30 @@
         z-index: 10;
       }
 
+      .hearts {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        z-index: 10;
+        display: flex;
+        gap: 8px;
+      }
+
+      .heart {
+        width: 50px;
+        height: 50px;
+      }
+
+      .heart-full {
+        fill: #ff3366;
+        filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.3));
+      }
+
+      .heart-broken {
+        fill: #808080;
+        filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.3));
+      }
+
       .permission-button,
       .pause-button,
       .shoot-button {
@@ -55,6 +79,7 @@
   <body>
     <div class="info" id="infoText">Checking device capabilities...</div>
     <div class="info" id="pauseText">Pause with ESC or Button</div>
+    <div class="hearts" id="heartsDisplay"></div>
     <canvas id="gameCanvas"></canvas>
     <button
       id="permissionButton"
@@ -71,6 +96,21 @@
     </button>
 
     <script>
+      // SVG templates for hearts
+      const fullHeartSVG = `
+        <svg class="heart" viewBox="0 0 24 24">
+        <path class="heart-full" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>`;
+
+      const brokenHeartSVG = `
+        <svg class="heart" viewBox="0 0 24 24">
+        <path class="heart-broken" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        <path class="heart-broken" d="M12 5L9 9h6l-3 4"/>
+        </svg>`;
+
+      const HEART_PATH =
+        "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
+
       const canvas = document.getElementById("gameCanvas");
       const ctx = canvas.getContext("2d");
       canvas.width = window.innerWidth;
@@ -81,6 +121,7 @@
       const permissionButton = document.getElementById("permissionButton");
       const pauseButton = document.getElementById("pauseButton");
       const shootButton = document.getElementById("shootButton");
+      const heartsDisplay = document.getElementById("heartsDisplay");
 
       const player = {
         x: canvas.width / 2,
@@ -88,6 +129,9 @@
         radius: 20,
         color: "blue",
         direction: { x: 0, y: 1 },
+        hearts: 3,
+        invulnerable: false,
+        invulnerabilityTime: 2000,
       };
 
       const zombies = [];
@@ -101,6 +145,14 @@
       let controlMode = "none"; // 'accelerometer' or 'mouse'
       let accelerometerValid = false; // Check if accelerometer works
       let paused = false;
+
+      // Variables for Heart Power-Up
+      const powerups = [];
+      const powerupSpawnInterval = { min: 10000, max: 20000 }; // Random spawn between 10-20 seconds
+      let nextPowerupSpawn =
+        Date.now() +
+        Math.random() * (powerupSpawnInterval.max - powerupSpawnInterval.min) +
+        powerupSpawnInterval.min;
 
       function handleMouseMove(event) {
         const x = (event.clientX / window.innerWidth) * 180 - 90;
@@ -361,6 +413,141 @@
         }
       }
 
+      function spawnHeartPowerup() {
+        // Spawn power-up at random position, keeping distance from edges
+        const margin = 50;
+        const x = margin + Math.random() * (canvas.width - 2 * margin);
+        const y = margin + Math.random() * (canvas.height - 2 * margin);
+
+        powerups.push({
+          x,
+          y,
+          radius: 15,
+          collected: false,
+          creation: Date.now(),
+          pulsePhase: 0,
+        });
+
+        // Schedule next spawn
+        nextPowerupSpawn =
+          Date.now() +
+          Math.random() *
+            (powerupSpawnInterval.max - powerupSpawnInterval.min) +
+          powerupSpawnInterval.min;
+      }
+
+      function drawHeartPowerup(powerup) {
+        ctx.save();
+
+        // Add floating animation
+        powerup.pulsePhase += 0.05;
+        const floatOffset = Math.sin(powerup.pulsePhase) * 5;
+
+        // Position and scale for the heart
+        ctx.translate(powerup.x, powerup.y + floatOffset);
+        ctx.scale(1.5, 1.5); // Make power-up heart slightly larger than HUD hearts
+
+        const path = new Path2D(HEART_PATH);
+
+        // Draw glowing effect
+        ctx.shadowColor = "#ff3366";
+        ctx.shadowBlur = 15;
+
+        // Draw the heart
+        ctx.fillStyle = "#ff3366";
+        ctx.fill(path);
+
+        ctx.restore();
+      }
+
+      function updatePowerups() {
+        // Check if it's time to spawn a new power-up
+        if (Date.now() >= nextPowerupSpawn) {
+          spawnHeartPowerup();
+        }
+
+        // Check for collection
+        powerups.forEach((powerup, index) => {
+          const dx = player.x - powerup.x;
+          const dy = player.y - powerup.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < player.radius + powerup.radius) {
+            // Collect power-up
+            player.hearts = 3;
+            updateHeartsDisplay();
+
+            // Add collection effect
+            createCollectionEffect(powerup.x, powerup.y);
+
+            // Remove power-up
+            powerups.splice(index, 1);
+          }
+        });
+
+        // Remove power-ups that have been around too long (30 seconds)
+        const now = Date.now();
+        for (let i = powerups.length - 1; i >= 0; i--) {
+          if (now - powerups[i].creation > 30000) {
+            powerups.splice(i, 1);
+          }
+        }
+      }
+
+      function createCollectionEffect(x, y) {
+        // Add sparkle effect
+        ctx.save();
+        ctx.translate(x, y);
+
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2;
+          const length = 15;
+
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(angle) * length, Math.sin(angle) * length);
+          ctx.strokeStyle = "#ff3366";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function updateHeartsDisplay() {
+        const heartsContainer = document.getElementById("heartsDisplay");
+        heartsContainer.innerHTML = "";
+
+        for (let i = 0; i < 3; i++) {
+          const heartDiv = document.createElement("div");
+          heartDiv.innerHTML =
+            i < player.hearts ? fullHeartSVG : brokenHeartSVG;
+          heartsContainer.appendChild(heartDiv);
+        }
+      }
+
+      // Update the makePlayerInvulnerable function to include visual feedback
+      function makePlayerInvulnerable() {
+        player.invulnerable = true;
+        player.color = "rgba(0, 0, 255, 0.5)";
+
+        // Add pulsing effect to remaining hearts during invulnerability
+        const hearts = document.querySelectorAll(".heart-full");
+        hearts.forEach((heart) => {
+          heart.style.animation = "pulse 1s infinite";
+        });
+
+        setTimeout(() => {
+          player.invulnerable = false;
+          player.color = "blue";
+          // Remove pulsing effect
+          const hearts = document.querySelectorAll(".heart-full");
+          hearts.forEach((heart) => {
+            heart.style.animation = "";
+          });
+        }, player.invulnerabilityTime);
+      }
+
       function checkCollisions() {
         if (paused) return;
 
@@ -388,9 +575,18 @@
           const dy = player.y - zombie.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < player.radius + zombie.radius) {
-            alert("Game Over!");
-            resetGame();
+          if (dist < player.radius + zombie.radius && !player.invulnerable) {
+            player.hearts--;
+            updateHeartsDisplay();
+
+            if (player.hearts <= 0) {
+              alert("Game Over!");
+              resetGame();
+            } else {
+              makePlayerInvulnerable();
+              // Remove the zombie that hit the player
+              zombies.splice(index, 1);
+            }
           }
         });
       }
@@ -398,8 +594,18 @@
       function resetGame() {
         player.x = canvas.width / 2;
         player.y = canvas.height / 2;
+        player.hearts = 3;
+        player.invulnerable = false;
+        player.color = "blue";
         zombies.length = 0;
         bullets.length = 0;
+        powerups.length = 0;
+        updateHeartsDisplay();
+        nextPowerupSpawn =
+          Date.now() +
+          Math.random() *
+            (powerupSpawnInterval.max - powerupSpawnInterval.min) +
+          powerupSpawnInterval.min;
       }
 
       function gameLoop() {
@@ -412,6 +618,11 @@
           updateZombies();
           drawBullets();
           updateBullets();
+
+          // Heart power-up
+          powerups.forEach(drawHeartPowerup);
+          updatePowerups();
+
           checkCollisions();
         }
 
@@ -440,7 +651,19 @@
 
       setInterval(spawnZombie, 1000);
       initializeControls();
+      updateHeartsDisplay();
       gameLoop();
+
+      // Add this to your existing CSS
+      const style = document.createElement("style");
+      style.textContent = `
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+`;
+      document.head.appendChild(style);
     </script>
   </body>
 </html>
