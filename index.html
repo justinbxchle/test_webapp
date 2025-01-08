@@ -143,6 +143,7 @@
       }
     </style>
   </head>
+
   <body>
     <div id="overlay" class="overlay">
       <h1 id="overlayTitle">Title</h1>
@@ -181,9 +182,11 @@
         <path class="heart-broken" d="M12 5L9 9h6l-3 4"/>
         </svg>`;
 
+      // SVG for Heart
       const HEART_PATH =
         "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
 
+      // Elements for Canvas
       const canvas = document.getElementById("gameCanvas");
       const ctx = canvas.getContext("2d");
       canvas.width = window.innerWidth;
@@ -191,16 +194,18 @@
 
       const infoText = document.getElementById("infoText");
       const pauseText = document.getElementById("pauseText");
+      const heartsDisplay = document.getElementById("heartsDisplay");
       const permissionButton = document.getElementById("permissionButton");
       const pauseButton = document.getElementById("pauseButton");
       const shootButton = document.getElementById("shootButton");
-      const heartsDisplay = document.getElementById("heartsDisplay");
 
+      // Elements for Overlay
       const overlay = document.getElementById("overlay");
       const overlayTitle = document.getElementById("overlayTitle");
       const overlayMessage = document.getElementById("overlayMessage");
       const overlayButton = document.getElementById("overlayButton");
 
+      // Variables for Player
       const player = {
         x: canvas.width / 2,
         y: canvas.height / 2,
@@ -212,22 +217,25 @@
         invulnerabilityTime: 2000,
       };
 
+      // Variables for Zombies
       const zombies = [];
       const zombieSpeed = 2;
+      let zombiesDefeated = 0;
 
+      // Variables for Bullets
       const bullets = [];
       const bulletSpeed = 10;
 
+      // Variables for Accelerometer
       let tiltX = 0;
       let tiltY = 0;
-      let controlMode = "none"; // Possible states: 'accelerometer' or 'mouse'
       let accelerometerValid = false; // Check if accelerometer works
+
+      // Variables for Game in general
+      let game = "start"; // Possible states: 'start', 'pause', 'game-over', 'error'
+      let controlMode = "none"; // Possible states: 'accelerometer' or 'mouse'
       let paused = false;
-
       let gameStarted = false;
-      let zombiesDefeated = 0;
-
-      let game = "start"; // Possible states: 'start', 'pause', 'game-over'
 
       // Variables for Heart Power-Up
       const powerups = [];
@@ -295,6 +303,10 @@
       }
 
       function fallbackToMouse() {
+        if (isTouchDevice()) {
+          showOverlay("error");
+          return;
+        }
         controlMode = "mouse";
         window.addEventListener("mousemove", handleMouseMove);
         permissionButton.style.display = "none";
@@ -330,6 +342,14 @@
         } else {
           fallbackToMouse();
         }
+      }
+
+      function isTouchDevice() {
+        return (
+          "ontouchstart" in window ||
+          navigator.maxTouchPoints > 0 ||
+          navigator.msMaxTouchPoints > 0
+        ); 
       }
 
       function drawPlayer() {
@@ -703,7 +723,7 @@
         if (state === "start") {
           overlayTitle.textContent = "Zombie Survival";
           overlayMessage.innerHTML =
-            "Use device tilt or mouse to move<br>Click or tap to shoot<br>Collect hearts to restore health";
+            "Use accelerometer or mouse to move<br>Click or tap to shoot<br>Collect hearts to restore your health";
           overlayButton.textContent = "Start Game";
           overlayButton.onclick = startGame;
         } else if (state === "pause") {
@@ -715,6 +735,11 @@
           overlayTitle.textContent = "Game Over";
           overlayMessage.textContent = `Zombies defeated: ${zombiesDefeated}`;
           overlayButton.textContent = "Play Again";
+          overlayButton.onclick = startGame;
+        } else if (state === "error") {
+          overlayTitle.textContent = "Error";
+          overlayMessage.textContent = "There was an error";
+          overlayButton.textContent = "Restart Game";
           overlayButton.onclick = startGame;
         }
       }
