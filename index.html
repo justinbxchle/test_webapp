@@ -299,7 +299,7 @@
         window.addEventListener("mousemove", handleMouseMove);
         permissionButton.style.display = "none";
         infoText.innerText =
-          "Controlling with Mouse (Accelerometer unavailable)";
+          "Controlling with Mouse (Accelerometer unavailable or request denied)";
         pauseText.innerText = "Pause with ESC";
         pauseButton.style.display = "none";
       }
@@ -742,7 +742,7 @@
       }
 
       function gameLoop() {
-        if (!paused && gameStarted) {
+        if (!paused && gameStarted && controlMode != "none") {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           drawPlayer();
