@@ -349,7 +349,7 @@
           "ontouchstart" in window ||
           navigator.maxTouchPoints > 0 ||
           navigator.msMaxTouchPoints > 0
-        ); 
+        );
       }
 
       function drawPlayer() {
@@ -738,7 +738,8 @@
           overlayButton.onclick = startGame;
         } else if (state === "error") {
           overlayTitle.textContent = "Error";
-          overlayMessage.textContent = "There was an error";
+          overlayMessage.textContent =
+            "There was an error. The requst for the accelermoter was denied but your device is controlled via touchscreen. The game sadly doesn't support this.";
           overlayButton.textContent = "Restart Game";
           overlayButton.onclick = startGame;
         }
