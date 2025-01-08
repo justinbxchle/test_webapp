@@ -74,9 +74,82 @@
         left: 10%;
         transform: translate(-50%, -50%);
       }
+
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        color: white;
+        display: none;
+      }
+
+      .overlay.active {
+        display: flex;
+      }
+
+      .overlay h1 {
+        font-size: 48px;
+        margin-bottom: 20px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      }
+
+      .overlay p {
+        font-size: 24px;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .overlay button {
+        padding: 15px 30px;
+        font-size: 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.2s;
+      }
+
+      .overlay button:hover {
+        background-color: #0056b3;
+        transform: scale(1.05);
+      }
+
+      .score {
+        font-size: 36px;
+        color: #ffd700;
+        margin-bottom: 20px;
+      }
+
+      .controls-info {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        max-width: 400px;
+      }
+
+      .controls-info h2 {
+        margin-top: 0;
+        color: #007bff;
+      }
     </style>
   </head>
   <body>
+    <div id="overlay" class="overlay">
+      <h1 id="overlayTitle">Title</h1>
+      <p id="overlayMessage">Message</p>
+      <button id="overlayButton">Action</button>
+    </div>
+
     <div class="info" id="infoText">Checking device capabilities...</div>
     <div class="info" id="pauseText">Pause with ESC or Button</div>
     <div class="hearts" id="heartsDisplay"></div>
@@ -123,6 +196,11 @@
       const shootButton = document.getElementById("shootButton");
       const heartsDisplay = document.getElementById("heartsDisplay");
 
+      const overlay = document.getElementById("overlay");
+      const overlayTitle = document.getElementById("overlayTitle");
+      const overlayMessage = document.getElementById("overlayMessage");
+      const overlayButton = document.getElementById("overlayButton");
+
       const player = {
         x: canvas.width / 2,
         y: canvas.height / 2,
@@ -142,9 +220,14 @@
 
       let tiltX = 0;
       let tiltY = 0;
-      let controlMode = "none"; // 'accelerometer' or 'mouse'
+      let controlMode = "none"; // Possible states: 'accelerometer' or 'mouse'
       let accelerometerValid = false; // Check if accelerometer works
       let paused = false;
+
+      let gameStarted = false;
+      let zombiesDefeated = 0;
+
+      let game = "start"; // Possible states: 'start', 'pause', 'game-over'
 
       // Variables for Heart Power-Up
       const powerups = [];
@@ -256,18 +339,35 @@
         const angle = Math.atan2(player.direction.y, player.direction.x);
         ctx.rotate(angle);
 
+        // Update pulse effect if invulnerable
+        if (player.invulnerable) {
+          player.pulsePhase += player.pulseSpeed;
+          // Calculate red intensity based on sine wave
+          const pulseIntensity = Math.sin(player.pulsePhase) * 0.5 + 0.5; // Values between 0 and 1
+          const redIntensity = Math.floor(255 * (0.5 + pulseIntensity * 0.5)); // Keep red always visible
+          player.color = `rgba(${redIntensity}, 0, 0, 0.8)`;
+
+          // Add glow effect
+          ctx.shadowColor = `rgba(255, 0, 0, ${pulseIntensity * 0.8})`;
+          ctx.shadowBlur = 20;
+        }
+
+        // Draw player body
         ctx.beginPath();
         ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
         ctx.fillStyle = player.color;
         ctx.fill();
         ctx.closePath();
+
         // Draw front (triangle)
         ctx.beginPath();
         ctx.moveTo(player.radius, 0);
         ctx.lineTo(player.radius / 2, -player.radius / 2);
         ctx.lineTo(player.radius / 2, player.radius / 2);
         ctx.closePath();
-        ctx.fillStyle = "white";
+        ctx.fillStyle = player.invulnerable
+          ? "rgba(255, 200, 200, 0.9)"
+          : "white";
         ctx.fill();
 
         ctx.restore();
@@ -526,30 +626,28 @@
         }
       }
 
-      // Update the makePlayerInvulnerable function to include visual feedback
       function makePlayerInvulnerable() {
         player.invulnerable = true;
-        player.color = "rgba(0, 0, 255, 0.5)";
+        player.pulsePhase = 0;
+        player.pulseSpeed = 0.1; // Initial pulse speed
+        const warningTime = 500; // Time in ms before invulnerability ends to start warning
 
-        // Add pulsing effect to remaining hearts during invulnerability
-        const hearts = document.querySelectorAll(".heart-full");
-        hearts.forEach((heart) => {
-          heart.style.animation = "pulse 1s infinite";
-        });
+        // Set a warning phase to speed up pulsing
+        setTimeout(() => {
+          if (player.invulnerable) {
+            player.pulseSpeed = 0.3; // Faster pulse speed for warning phase
+          }
+        }, player.invulnerabilityTime - warningTime);
 
+        // End invulnerability after the set time
         setTimeout(() => {
           player.invulnerable = false;
           player.color = "blue";
-          // Remove pulsing effect
-          const hearts = document.querySelectorAll(".heart-full");
-          hearts.forEach((heart) => {
-            heart.style.animation = "";
-          });
         }, player.invulnerabilityTime);
       }
 
       function checkCollisions() {
-        if (paused) return;
+        if (paused || !gameStarted) return;
 
         // Check bullet-zombie collisions
         for (let i = zombies.length - 1; i >= 0; i--) {
@@ -564,6 +662,7 @@
             if (dist < zombie.radius + bullet.radius) {
               zombies.splice(i, 1);
               bullets.splice(j, 1);
+              zombiesDefeated++; // Increment score
               break;
             }
           }
@@ -580,15 +679,47 @@
             updateHeartsDisplay();
 
             if (player.hearts <= 0) {
-              alert("Game Over!");
-              resetGame();
+              gameStarted = false;
+              showOverlay("game-over");
             } else {
               makePlayerInvulnerable();
-              // Remove the zombie that hit the player
               zombies.splice(index, 1);
             }
           }
         });
+      }
+
+      function startGame() {
+        gameStarted = true;
+        hideOverlay();
+        resetGame();
+      }
+
+      function showOverlay(state) {
+        gameState = state;
+        overlay.classList.add("active");
+
+        if (state === "start") {
+          overlayTitle.textContent = "Zombie Survival";
+          overlayMessage.innerHTML =
+            "Use device tilt or mouse to move<br>Click or tap to shoot<br>Collect hearts to restore health";
+          overlayButton.textContent = "Start Game";
+          overlayButton.onclick = startGame;
+        } else if (state === "pause") {
+          overlayTitle.textContent = "Game Paused";
+          overlayMessage.innerHTML = "Press ESC or Pause button to resume";
+          overlayButton.textContent = "Resume Game";
+          overlayButton.onclick = togglePause;
+        } else if (state === "game-over") {
+          overlayTitle.textContent = "Game Over";
+          overlayMessage.textContent = `Zombies defeated: ${zombiesDefeated}`;
+          overlayButton.textContent = "Play Again";
+          overlayButton.onclick = startGame;
+        }
+      }
+
+      function hideOverlay() {
+        overlay.classList.remove("active");
       }
 
       function resetGame() {
@@ -600,6 +731,7 @@
         zombies.length = 0;
         bullets.length = 0;
         powerups.length = 0;
+        zombiesDefeated = 0;
         updateHeartsDisplay();
         nextPowerupSpawn =
           Date.now() +
@@ -609,7 +741,7 @@
       }
 
       function gameLoop() {
-        if (!paused) {
+        if (!paused && gameStarted) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           drawPlayer();
@@ -619,7 +751,6 @@
           drawBullets();
           updateBullets();
 
-          // Heart power-up
           powerups.forEach(drawHeartPowerup);
           updatePowerups();
 
@@ -630,28 +761,59 @@
       }
 
       function togglePause() {
+        if (!gameStarted) return;
         paused = !paused;
-        pauseButton.textContent = paused ? "Resume" : "Pause";
+        if (!paused) {
+          hideOverlay();
+          gameState = "playing";
+        } else {
+          showOverlay("pause");
+        }
       }
 
-      document.addEventListener("click", shootBullets);
+      function handleGameClick(event) {
+        // Check if the click was on the start or restart buttons
+        const overlayButton = document.getElementById("overlayButton");
 
-      shootButton.addEventListener("click", shootBullets);
+        const clickedElement = event.target;
+
+        // Don't shoot if clicking on menu buttons
+        if (clickedElement === overlayButton) {
+          return;
+        }
+
+        // Only shoot if the game is active
+        if (gameStarted && !paused) {
+          shootBullets();
+        }
+      }
+
+      document.addEventListener("click", handleGameClick);
+
+      shootButton.addEventListener("click", (event) => {
+        if (gameStarted && !paused) {
+          shootBullets();
+        }
+        // Prevent the click from triggering the document click handler
+        event.stopPropagation();
+      });
 
       pauseButton.addEventListener("click", togglePause);
 
       document.addEventListener("keydown", (event) => {
         if (controlMode === "mouse" && event.key === "Escape") {
-          paused = !paused;
-          pauseText.innerText = paused
-            ? "Game Paused (Press ESC to Resume)"
-            : "Pause with ESC";
+          togglePause();
         }
       });
 
-      setInterval(spawnZombie, 1000);
+      setInterval(() => {
+        if (gameStarted && !paused) {
+          spawnZombie();
+        }
+      }, 1000);
       initializeControls();
       updateHeartsDisplay();
+      showOverlay("start");
       gameLoop();
 
       // Add this to your existing CSS
