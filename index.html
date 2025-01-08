@@ -275,31 +275,25 @@
       }
 
       function requestAccelerometerPermission() {
-        if (typeof DeviceOrientationEvent.requestPermission === "function") {
-          DeviceOrientationEvent.requestPermission()
-            .then((response) => {
-              if (response === "granted") {
-                controlMode = "accelerometer";
-                window.addEventListener("deviceorientation", handleOrientation);
-                permissionButton.style.display = "none";
-              } else {
-                fallbackToMouse();
-              }
-            })
-            .catch(() => {
-              fallbackToMouse();
-            });
-        } else {
-          controlMode = "accelerometer";
-          window.addEventListener("deviceorientation", handleOrientation);
-
-          // Add a timeout to detect if accelerometer provides valid data
-          setTimeout(() => {
-            if (!accelerometerValid) {
+        DeviceOrientationEvent.requestPermission()
+          .then((response) => {
+            if (response === "granted") {
+              controlMode = "accelerometer";
+              window.addEventListener("deviceorientation", handleOrientation);
+              permissionButton.style.display = "none";
+              // Add a timeout to detect if accelerometer provides valid data
+              setTimeout(() => {
+                if (!accelerometerValid) {
+                  fallbackToMouse();
+                }
+              }, 1000); // Check after 1 second
+            } else {
               fallbackToMouse();
             }
-          }, 1000); // Check after 1 second
-        }
+          })
+          .catch(() => {
+            fallbackToMouse();
+          });
       }
 
       function fallbackToMouse() {
