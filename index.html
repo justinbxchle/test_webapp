@@ -753,6 +753,7 @@
         bullets.length = 0;
         powerups.length = 0;
         zombiesDefeated = 0;
+        controlMode = "none";
         updateHeartsDisplay();
         nextPowerupSpawn =
           Date.now() +
@@ -832,7 +833,7 @@
       });
 
       setInterval(() => {
-        if (gameStarted && !paused) {
+        if (gameStarted && !paused && controlMode != "none") {
           spawnZombie();
         }
       }, 1000);
