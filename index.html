@@ -308,10 +308,11 @@
         if (window.DeviceOrientationEvent) {
           if (typeof DeviceOrientationEvent.requestPermission === "function") {
             permissionButton.style.display = "block";
-            permissionButton.addEventListener(
-              "click",
-              requestAccelerometerPermission
-            );
+            permissionButton.addEventListener("click", (event) => {
+              requestAccelerometerPermission();
+              // Prevent the click from triggering the document click handler
+              event.stopPropagation();
+            });
             infoText.innerText =
               "Click the button to enable Accelerometer control.";
           } else {
@@ -798,7 +799,11 @@
         event.stopPropagation();
       });
 
-      pauseButton.addEventListener("click", togglePause);
+      pauseButton.addEventListener("click", (event) => {
+        togglePause();
+        // Prevent the click from triggering the document click handler
+        event.stopPropagation();
+      });
 
       document.addEventListener("keydown", (event) => {
         if (controlMode === "mouse" && event.key === "Escape") {
