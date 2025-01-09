@@ -4,75 +4,120 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zombie Game</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Roboto", sans-serif;
+      }
+
       body {
         margin: 0;
         overflow: hidden;
-        background-color: #333;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
       }
 
       canvas {
         display: block;
+        filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.3));
+      }
+
+      .info-container {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        z-index: 10;
       }
 
       .info {
-        top: 10px;
-        left: 10px;
-        color: white;
-        font-family: Arial, sans-serif;
-        z-index: 10;
+        position: relative;
+        color: #e2e8f0;
+        font-size: 1.1rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.4);
+        padding: 10px 15px;
+        border-radius: 8px;
+        backdrop-filter: blur(5px);
       }
 
       .hearts {
         position: absolute;
-        top: 15px;
-        right: 15px;
+        top: 20px;
+        right: 20px;
         z-index: 10;
         display: flex;
-        gap: 8px;
+        gap: 12px;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 10px 15px;
+        border-radius: 8px;
+        backdrop-filter: blur(5px);
       }
 
       .heart {
-        width: 50px;
-        height: 50px;
+        width: 40px;
+        height: 40px;
+        filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+        transition: transform 0.3s ease;
+      }
+
+      .heart:hover {
+        transform: scale(1.1);
       }
 
       .heart-full {
-        fill: #ff3366;
-        filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.3));
+        fill: #ff4d6d;
+        filter: drop-shadow(0 0 3px rgba(255, 77, 109, 0.6));
       }
 
       .heart-broken {
-        fill: #808080;
-        filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.3));
+        fill: #4a5568;
+        filter: drop-shadow(0 0 3px rgba(74, 85, 104, 0.6));
       }
 
-      .permission-button,
-      .pause-button,
-      .shoot-button {
+      .game-button {
         position: absolute;
+        padding: 12px 24px;
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #fff;
+        background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .game-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        background: linear-gradient(135deg, #357abd 0%, #2868a9 100%);
+      }
+
+      .permission-button {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        padding: 10px 20px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-size: 16px;
-        cursor: pointer;
       }
 
       .pause-button {
-        top: 90%;
-        left: 90%;
-        transform: translate(-50%, -50%);
+        bottom: 20px;
+        right: 20px;
       }
 
       .shoot-button {
-        top: 90%;
-        left: 10%;
-        transform: translate(-50%, -50%);
+        bottom: 20px;
+        left: 20px;
       }
 
       .overlay {
@@ -81,65 +126,116 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.8);
+        background: linear-gradient(
+          135deg,
+          rgba(26, 26, 46, 0.95) 0%,
+          rgba(22, 33, 62, 0.95) 100%
+        );
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         z-index: 100;
-        color: white;
-        display: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
       }
 
       .overlay.active {
-        display: flex;
+        opacity: 1;
+        visibility: visible;
       }
 
       .overlay h1 {
-        font-size: 48px;
-        margin-bottom: 20px;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 1.5rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        text-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
       }
 
       .overlay p {
-        font-size: 24px;
-        margin-bottom: 30px;
+        font-size: 1.2rem;
+        color: #e2e8f0;
+        margin-bottom: 2rem;
         text-align: center;
+        line-height: 1.6;
+        max-width: 600px;
+        padding: 0 20px;
       }
 
       .overlay button {
-        padding: 15px 30px;
-        font-size: 20px;
-        background-color: #007bff;
-        color: white;
+        padding: 15px 40px;
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: #fff;
+        background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
         border: none;
-        border-radius: 5px;
+        border-radius: 8px;
         cursor: pointer;
-        transition: background-color 0.3s, transform 0.2s;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       }
 
       .overlay button:hover {
-        background-color: #0056b3;
-        transform: scale(1.05);
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        background: linear-gradient(135deg, #357abd 0%, #2868a9 100%);
       }
 
       .score {
-        font-size: 36px;
-        color: #ffd700;
-        margin-bottom: 20px;
+        font-size: 2.5rem;
+        color: #4a90e2;
+        margin-bottom: 1.5rem;
+        text-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
       }
 
       .controls-info {
         background: rgba(255, 255, 255, 0.1);
-        padding: 20px;
-        border-radius: 10px;
-        margin: 20px 0;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1.5rem 0;
         max-width: 400px;
+        backdrop-filter: blur(5px);
       }
 
       .controls-info h2 {
         margin-top: 0;
-        color: #007bff;
+        color: #4a90e2;
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes float {
+        0% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+        100% {
+          transform: translateY(0);
+        }
+      }
+
+      .powerup {
+        animation: float 2s ease-in-out infinite;
       }
     </style>
   </head>
@@ -151,8 +247,10 @@
       <button id="overlayButton">Action</button>
     </div>
 
-    <div class="info" id="infoText">Checking device capabilities...</div>
-    <div class="info" id="pauseText">Pause with ESC or Button</div>
+    <div class="info-container">
+      <div class="info" id="infoText">Checking device capabilities...</div>
+      <div class="info" id="pauseText">Pause with ESC or Button</div>
+    </div>
     <div class="hearts" id="heartsDisplay"></div>
     <canvas id="gameCanvas"></canvas>
     <button
@@ -714,6 +812,11 @@
         gameStarted = true;
         hideOverlay();
         resetGame();
+
+        // Re-initialize controls if they were lost
+        if (controlMode === "none") {
+          initializeControls();
+        }
       }
 
       function showOverlay(state) {
@@ -750,22 +853,40 @@
       }
 
       function resetGame() {
+        // Reset player state
         player.x = canvas.width / 2;
         player.y = canvas.height / 2;
         player.hearts = 3;
         player.invulnerable = false;
         player.color = "blue";
+        player.direction = { x: 0, y: 1 };
+
+        // Clear game arrays
         zombies.length = 0;
         bullets.length = 0;
         powerups.length = 0;
         zombiesDefeated = 0;
-        controlMode = "none";
-        updateHeartsDisplay();
+
+        // Reset game state
+        paused = false;
+        gameStarted = true;
+
+        // Reset power-up spawn timer
         nextPowerupSpawn =
           Date.now() +
           Math.random() *
             (powerupSpawnInterval.max - powerupSpawnInterval.min) +
           powerupSpawnInterval.min;
+
+        // Reset UI
+        updateHeartsDisplay();
+
+        // Reset acceleration/movement values
+        tiltX = 0;
+        tiltY = 0;
+
+        // Clear the canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
 
       function gameLoop() {
