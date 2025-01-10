@@ -14,31 +14,23 @@
         padding: 0;
         box-sizing: border-box;
         font-family: "Roboto", sans-serif;
-        touch-action: none; /* Prevent default touch behaviors */
-        -webkit-touch-callout: none; /* Prevent callouts */
-        -webkit-user-select: none; /* Prevent selection */
-        user-select: none;
       }
 
       body {
         margin: 0;
         overflow: hidden;
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        position: fixed; /* Prevent bounce on iOS */
-        width: 100%;
-        height: 100%;
       }
 
       canvas {
         display: block;
         filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.3));
-        touch-action: none;
       }
 
       .info-container {
         position: absolute;
-        top: min(20px, 5vh);
-        left: min(20px, 5vw);
+        top: 20px;
+        left: 20px;
         display: flex;
         flex-direction: column;
         gap: 5px;
@@ -48,38 +40,52 @@
       .info {
         position: relative;
         color: #e2e8f0;
-        font-size: clamp(0.8rem, 2.5vw, 1.1rem);
+        font-size: 1.1rem;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         background: rgba(0, 0, 0, 0.4);
-        padding: clamp(5px, 2vw, 10px) clamp(8px, 3vw, 15px);
+        padding: 10px 15px;
         border-radius: 8px;
         backdrop-filter: blur(5px);
       }
 
       .hearts {
         position: absolute;
-        top: min(20px, 5vh);
-        right: min(20px, 5vw);
+        top: 20px;
+        right: 20px;
         z-index: 10;
         display: flex;
-        gap: clamp(6px, 2vw, 12px);
+        gap: 12px;
         background: rgba(0, 0, 0, 0.4);
-        padding: clamp(5px, 2vw, 10px) clamp(8px, 3vw, 15px);
+        padding: 10px 15px;
         border-radius: 8px;
         backdrop-filter: blur(5px);
       }
 
       .heart {
-        width: clamp(20px, 6vw, 40px);
-        height: clamp(20px, 6vw, 40px);
+        width: 40px;
+        height: 40px;
         filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
         transition: transform 0.3s ease;
       }
 
+      .heart:hover {
+        transform: scale(1.1);
+      }
+
+      .heart-full {
+        fill: #ff4d6d;
+        filter: drop-shadow(0 0 3px rgba(255, 77, 109, 0.6));
+      }
+
+      .heart-broken {
+        fill: #4a5568;
+        filter: drop-shadow(0 0 3px rgba(74, 85, 104, 0.6));
+      }
+
       .game-button {
         position: absolute;
-        padding: clamp(8px, 2.5vw, 12px) clamp(16px, 5vw, 24px);
-        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+        padding: 12px 24px;
+        font-size: 1.1rem;
         font-weight: 500;
         color: #fff;
         background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
@@ -90,61 +96,30 @@
         text-transform: uppercase;
         letter-spacing: 1px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        -webkit-tap-highlight-color: transparent;
       }
 
-      @media (hover: hover) {
-        .game-button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
-          background: linear-gradient(135deg, #357abd 0%, #2868a9 100%);
-        }
+      .game-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        background: linear-gradient(135deg, #357abd 0%, #2868a9 100%);
       }
 
-      .game-button:active {
-        transform: translateY(1px);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-
-      .control-buttons {
-        position: fixed;
-        bottom: min(20px, 5vh);
-        left: 0;
-        right: 0;
-        display: flex;
-        justify-content: space-between;
-        padding: 0 min(20px, 5vw);
-        gap: 10px;
-        z-index: 10;
-      }
-
-      /* Virtual joystick container */
-      #joystickContainer {
-        position: fixed;
-        bottom: 100px;
-        left: 50px;
-        width: 120px;
-        height: 120px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        display: none;
-        touch-action: none;
-        z-index: 100;
-      }
-
-      #joystickKnob {
-        position: absolute;
-        width: 40px;
-        height: 40px;
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 50%;
+      .permission-button {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        touch-action: none;
       }
 
-      /* Responsive overlay */
+      .pause-button {
+        bottom: 20px;
+        right: 20px;
+      }
+
+      .shoot-button {
+        bottom: 20px;
+        left: 20px;
+      }
+
       .overlay {
         position: fixed;
         top: 0;
@@ -164,7 +139,6 @@
         opacity: 0;
         visibility: hidden;
         transition: all 0.3s ease;
-        padding: 20px;
       }
 
       .overlay.active {
@@ -173,71 +147,159 @@
       }
 
       .overlay h1 {
-        font-size: clamp(2rem, 6vw, 3.5rem);
+        font-size: 3.5rem;
         font-weight: 700;
         color: #fff;
-        margin-bottom: clamp(1rem, 3vw, 1.5rem);
+        margin-bottom: 1.5rem;
         text-transform: uppercase;
         letter-spacing: 2px;
         text-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
-        text-align: center;
       }
 
       .overlay p {
-        font-size: clamp(1rem, 3vw, 1.2rem);
+        font-size: 1.2rem;
         color: #e2e8f0;
-        margin-bottom: clamp(1.5rem, 4vw, 2rem);
+        margin-bottom: 2rem;
         text-align: center;
         line-height: 1.6;
-        max-width: min(600px, 90vw);
-        padding: 0 clamp(10px, 3vw, 20px);
+        max-width: 600px;
+        padding: 0 20px;
       }
 
       .overlay button {
-        padding: clamp(12px, 3vw, 15px) clamp(30px, 8vw, 40px);
-        font-size: clamp(1rem, 3vw, 1.2rem);
+        padding: 15px 40px;
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: #fff;
+        background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       }
 
-      /* Device-specific styles */
+      .overlay button:hover {
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        background: linear-gradient(135deg, #357abd 0%, #2868a9 100%);
+      }
+
+      .score {
+        font-size: 2.5rem;
+        color: #4a90e2;
+        margin-bottom: 1.5rem;
+        text-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
+      }
+
+      .controls-info {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1.5rem 0;
+        max-width: 400px;
+        backdrop-filter: blur(5px);
+      }
+
+      .controls-info h2 {
+        margin-top: 0;
+        color: #4a90e2;
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes float {
+        0% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+        100% {
+          transform: translateY(0);
+        }
+      }
+
+      .powerup {
+        animation: float 2s ease-in-out infinite;
+      }
+
+      /* Mobile-specific adjustments */
       @media (max-width: 768px) {
-        .control-buttons {
-          bottom: min(10px, 3vh);
+        .info-container {
+          top: env(safe-area-inset-top, 10px);
+          left: env(safe-area-inset-left, 10px);
+        }
+
+        .hearts {
+          top: env(safe-area-inset-top, 10px);
+          right: env(safe-area-inset-right, 10px);
         }
 
         .game-button {
-          min-width: 80px;
-          min-height: 44px; /* Minimum touch target size */
+          padding: 15px;
+          font-size: 1rem;
+        }
+
+        .overlay h1 {
+          font-size: clamp(2rem, 6vw, 3.5rem);
+        }
+
+        .overlay p {
+          font-size: clamp(1rem, 3vw, 1.2rem);
+          padding: 0 clamp(10px, 5vw, 20px);
+        }
+
+        .overlay button {
+          padding: clamp(12px, 3vw, 15px) clamp(20px, 6vw, 40px);
+          font-size: clamp(1rem, 3vw, 1.2rem);
         }
       }
 
+      /* Tablet-specific adjustments */
       @media (min-width: 769px) and (max-width: 1024px) {
-        .control-buttons {
-          bottom: min(15px, 4vh);
-        }
-      }
-
-      /* Hide mobile controls on desktop */
-      @media (min-width: 1025px) {
-        #joystickContainer,
-        .mobile-only {
-          display: none !important;
+        .game-button {
+          padding: 18px;
+          font-size: 1.1rem;
         }
       }
 
       /* Landscape orientation adjustments */
-      @media (max-height: 500px) and (orientation: landscape) {
-        .hearts {
-          top: 10px;
-          right: 10px;
+      @media (orientation: landscape) and (max-height: 768px) {
+        .game-button {
+          bottom: 10px;
         }
 
         .info-container {
           top: 10px;
-          left: 10px;
         }
 
-        .control-buttons {
-          bottom: 10px;
+        .hearts {
+          top: 10px;
+        }
+      }
+
+      /* iPhone notch support */
+      @supports (padding-top: env(safe-area-inset-top)) {
+        .info-container,
+        .hearts,
+        .game-button {
+          padding: env(safe-area-inset-top) env(safe-area-inset-right)
+            env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
       }
     </style>
@@ -346,17 +408,9 @@
         Math.random() * (powerupSpawnInterval.max - powerupSpawnInterval.min) +
         powerupSpawnInterval.min;
 
-      const isMobile =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent
-        );
-      const isTablet =
-        /iPad|Android/.test(navigator.userAgent) &&
-        !/Mobile/.test(navigator.userAgent);
-
-      let lastTime = 0;
-      const targetFPS = 60;
-      const frameInterval = 1000 / targetFPS;
+      // Add cooldown configuration
+      const SHOOT_COOLDOWN = 500; // 0.5 seconds cooldown
+      let lastShootTime = 0;
 
       function handleMouseMove(event) {
         const x = (event.clientX / window.innerWidth) * 180 - 90;
@@ -430,9 +484,7 @@
       }
 
       function initializeControls() {
-        if (isMobile || isTablet) {
-          setupMobileControls();
-        } else if (window.DeviceOrientationEvent) {
+        if (window.DeviceOrientationEvent) {
           if (typeof DeviceOrientationEvent.requestPermission === "function") {
             permissionButton.style.display = "block";
             permissionButton.addEventListener("click", (event) => {
@@ -457,65 +509,6 @@
         } else {
           fallbackToMouse();
         }
-      }
-
-      function setupMobileControls() {
-        // Show virtual joystick for mobile/tablet
-        const joystickContainer = document.getElementById("joystickContainer");
-        joystickContainer.style.display = "block";
-
-        // Touch handling for joystick
-        let joystickActive = false;
-        let joystickOrigin = { x: 0, y: 0 };
-
-        joystickContainer.addEventListener("touchstart", (e) => {
-          joystickActive = true;
-          const touch = e.touches[0];
-          joystickOrigin.x = touch.clientX;
-          joystickOrigin.y = touch.clientY;
-          e.preventDefault();
-        });
-
-        joystickContainer.addEventListener("touchmove", (e) => {
-          if (!joystickActive) return;
-
-          const touch = e.touches[0];
-          const dx = touch.clientX - joystickOrigin.x;
-          const dy = touch.clientY - joystickOrigin.y;
-
-          // Update tilt values based on joystick position
-          tiltX = dx / 50; // Adjust sensitivity
-          tiltY = dy / 50;
-
-          // Limit joystick movement
-          const maxDistance = 40;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          const angle = Math.atan2(dy, dx);
-
-          const knob = document.getElementById("joystickKnob");
-          if (distance > maxDistance) {
-            knob.style.left = `${Math.cos(angle) * maxDistance + 60}px`;
-            knob.style.top = `${Math.sin(angle) * maxDistance + 60}px`;
-          } else {
-            knob.style.left = `${touch.clientX - joystickOrigin.x + 60}px`;
-            knob.style.top = `${touch.clientY - joystickOrigin.y + 60}px`;
-          }
-
-          e.preventDefault();
-        });
-
-        joystickContainer.addEventListener("touchend", () => {
-          joystickActive = false;
-          tiltX = 0;
-          tiltY = 0;
-          const knob = document.getElementById("joystickKnob");
-          knob.style.left = "60px";
-          knob.style.top = "60px";
-        });
-
-        // Show mobile-specific buttons
-        shootButton.style.display = "block";
-        pauseButton.style.display = "block";
       }
 
       function isTouchDevice() {
@@ -660,10 +653,18 @@
       }
 
       function shootBullets() {
-        if (paused) return;
+        const currentTime = Date.now();
+        const timeSinceLastShot = currentTime - lastShootTime;
 
-        // Generate 3 bullets with spread
-        const spread = Math.PI / 12; // Spread angle for shotgun
+        // Check if still in cooldown
+        if (timeSinceLastShot < SHOOT_COOLDOWN) {
+          return;
+        }
+
+        if (paused || !gameStarted) return;
+
+        // Actual shooting logic
+        const spread = Math.PI / 12;
         const baseAngle = Math.atan2(player.direction.y, player.direction.x);
 
         for (let i = -1; i <= 1; i++) {
@@ -678,6 +679,9 @@
             color: "yellow",
           });
         }
+
+        // Update last shoot time
+        lastShootTime = currentTime;
       }
 
       function drawBullets() {
@@ -965,27 +969,21 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
 
-      function gameLoop(timestamp) {
-        if (!lastTime) lastTime = timestamp;
-        const elapsed = timestamp - lastTime;
+      function gameLoop() {
+        if (!paused && gameStarted && controlMode != "none") {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (elapsed > frameInterval) {
-          if (!paused && gameStarted && controlMode != "none") {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          drawPlayer();
+          updatePlayer();
+          drawZombies();
+          updateZombies();
+          drawBullets();
+          updateBullets();
 
-            // Your existing game update code
-            drawPlayer();
-            updatePlayer();
-            drawZombies();
-            updateZombies();
-            drawBullets();
-            updateBullets();
-            powerups.forEach(drawHeartPowerup);
-            updatePowerups();
-            checkCollisions();
+          powerups.forEach(drawHeartPowerup);
+          updatePowerups();
 
-            lastTime = timestamp;
-          }
+          checkCollisions();
         }
 
         requestAnimationFrame(gameLoop);
@@ -1003,13 +1001,14 @@
       }
 
       function handleGameClick(event) {
-        // Check if the click was on the start or restart buttons
         const overlayButton = document.getElementById("overlayButton");
-
         const clickedElement = event.target;
 
         // Don't shoot if clicking on menu buttons
-        if (clickedElement === overlayButton) {
+        if (
+          clickedElement === overlayButton ||
+          clickedElement === permissionButton
+        ) {
           return;
         }
 
@@ -1035,28 +1034,12 @@
         event.stopPropagation();
       });
 
+      // Handling pausing with escape
       document.addEventListener("keydown", (event) => {
         if (controlMode === "mouse" && event.key === "Escape") {
           togglePause();
         }
       });
-
-      // Add touch event handling for shooting
-      canvas.addEventListener("touchstart", (e) => {
-        if (gameStarted && !paused) {
-          shootBullets();
-        }
-        e.preventDefault();
-      });
-
-      // Prevent default touch behaviors
-      document.addEventListener(
-        "touchmove",
-        (e) => {
-          e.preventDefault();
-        },
-        { passive: false }
-      );
 
       // Handle orientation changes
       window.addEventListener("orientationchange", () => {
