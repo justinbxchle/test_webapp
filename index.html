@@ -105,17 +105,20 @@
       }
 
       .permission-button {
+        position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
       }
 
       .pause-button {
+        position: fixed;
         bottom: 20px;
         right: 20px;
       }
 
       .shoot-button {
+        position: fixed;
         bottom: 20px;
         left: 20px;
       }
@@ -409,7 +412,7 @@
         powerupSpawnInterval.min;
 
       // Add cooldown configuration
-      const SHOOT_COOLDOWN = 500; // 0.5 seconds cooldown
+      const SHOOT_COOLDOWN = 300; // 0.3 seconds cooldown
       let lastShootTime = 0;
 
       function handleMouseMove(event) {
@@ -424,15 +427,56 @@
         }
       }
 
-      function handleOrientation(event) {
+      function handleOrientationWithRotation(event) {
         if (event.gamma === null || event.beta === null) {
           fallbackToMouse();
           return;
         }
 
         accelerometerValid = true;
-        tiltX = event.gamma || 0;
-        tiltY = event.beta || 0;
+
+        // Get the current screen orientation
+        const orientation =
+          (screen.orientation || {}).type ||
+          screen.msOrientation ||
+          screen.mozOrientation ||
+          window.orientation;
+
+        let adjustedTiltX;
+        let adjustedTiltY;
+
+        // Handle different orientations
+        switch (orientation) {
+          case "landscape-primary":
+          case 90: // For older browsers that use degrees
+            adjustedTiltX = event.beta; // Use beta as X-axis tilt
+            adjustedTiltY = -event.gamma; // Use negative gamma as Y-axis tilt
+            break;
+
+          case "landscape-secondary":
+          case -90: // For older browsers that use degrees
+            adjustedTiltX = -event.beta; // Use negative beta as X-axis tilt
+            adjustedTiltY = event.gamma; // Use gamma as Y-axis tilt
+            break;
+
+          case "portrait-secondary":
+          case 180:
+            adjustedTiltX = -event.gamma; // Use negative gamma as X-axis tilt
+            adjustedTiltY = -event.beta; // Use negative beta as Y-axis tilt
+            break;
+
+          case "portrait-primary":
+          case 0:
+          default:
+            adjustedTiltX = event.gamma; // Use gamma as X-axis tilt
+            adjustedTiltY = event.beta; // Use beta as Y-axis tilt
+            break;
+        }
+
+        // Clamp the values to prevent excessive movement
+        const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+        tiltX = clamp(adjustedTiltX, -45, 45);
+        tiltY = clamp(adjustedTiltY, -45, 45);
 
         if (controlMode === "accelerometer") {
           infoText.innerText = "Controlling with Accelerometer";
@@ -447,7 +491,10 @@
             .then((response) => {
               if (response === "granted") {
                 controlMode = "accelerometer";
-                window.addEventListener("deviceorientation", handleOrientation);
+                window.addEventListener(
+                  "deviceorientation",
+                  handleOrientationWithRotation
+                );
                 permissionButton.style.display = "none";
               } else {
                 fallbackToMouse();
@@ -458,7 +505,10 @@
             });
         } else {
           controlMode = "accelerometer";
-          window.addEventListener("deviceorientation", handleOrientation);
+          window.addEventListener(
+            "deviceorientation",
+            handleOrientationWithRotation
+          );
 
           // Add a timeout to detect if accelerometer provides valid data
           setTimeout(() => {
@@ -496,7 +546,10 @@
               "Click the button to enable Accelerometer control.";
           } else {
             controlMode = "accelerometer";
-            window.addEventListener("deviceorientation", handleOrientation);
+            window.addEventListener(
+              "deviceorientation",
+              handleOrientationWithRotation
+            );
             infoText.innerText = "Accelerometer control enabled.";
 
             // Add a timeout to detect valid accelerometer data
@@ -1043,8 +1096,20 @@
 
       // Handle orientation changes
       window.addEventListener("orientationchange", () => {
+        // Update canvas dimensions
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+
+        // Reset player position to center when orientation changes
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+
+        // Reset tilt values to prevent unexpected movement during transition
+        tiltX = 0;
+        tiltY = 0;
+
+        // Update UI elements position if needed
+        updateUIElementsPosition();
       });
 
       // Handle window resizing
@@ -1053,15 +1118,41 @@
         canvas.height = window.innerHeight;
       });
 
-      setInterval(() => {
-        if (gameStarted && !paused && controlMode != "none") {
-          spawnZombie();
+      // Helper function to update UI elements position
+      function updateUIElementsPosition() {
+        // Adjust the position of buttons and info elements based on new dimensions
+        const safeAreaTop = "env(safe-area-inset-top, 10px)";
+        const safeAreaRight = "env(safe-area-inset-right, 10px)";
+        const safeAreaBottom = "env(safe-area-inset-bottom, 10px)";
+        const safeAreaLeft = "env(safe-area-inset-left, 10px)";
+
+        // Update controls position
+        if (window.innerWidth > window.innerHeight) {
+          // Landscape mode
+          shootButton.style.left = safeAreaLeft;
+          shootButton.style.bottom = "10px";
+          pauseButton.style.right = safeAreaRight;
+          pauseButton.style.bottom = "10px";
+        } else {
+          // Portrait mode
+          shootButton.style.left = safeAreaLeft;
+          shootButton.style.bottom = "20px";
+          pauseButton.style.right = safeAreaRight;
+          pauseButton.style.bottom = "20px";
         }
-      }, 1000);
-      initializeControls();
-      updateHeartsDisplay();
-      showOverlay("start");
-      gameLoop();
+      }
+
+      function init() {
+        setInterval(() => {
+          if (gameStarted && !paused && controlMode != "none") {
+            spawnZombie();
+          }
+        }, 1000);
+        initializeControls();
+        updateHeartsDisplay();
+        showOverlay("start");
+        gameLoop();
+      }
 
       // Add this to your existing CSS
       const style = document.createElement("style");
@@ -1073,6 +1164,8 @@
 }
 `;
       document.head.appendChild(style);
+
+      init();
     </script>
   </body>
 </html>
