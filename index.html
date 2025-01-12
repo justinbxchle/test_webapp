@@ -370,18 +370,18 @@
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
+      // Elements for Overlay
+      const overlay = document.getElementById("overlay");
+      const overlayTitle = document.getElementById("overlayTitle");
+      const overlayMessage = document.getElementById("overlayMessage");
+      const overlayButton = document.getElementById("overlayButton");
+
       const infoText = document.getElementById("infoText");
       const pauseText = document.getElementById("pauseText");
       const heartsDisplay = document.getElementById("heartsDisplay");
       const permissionButton = document.getElementById("permissionButton");
       const pauseButton = document.getElementById("pauseButton");
       const shootButton = document.getElementById("shootButton");
-
-      // Elements for Overlay
-      const overlay = document.getElementById("overlay");
-      const overlayTitle = document.getElementById("overlayTitle");
-      const overlayMessage = document.getElementById("overlayMessage");
-      const overlayButton = document.getElementById("overlayButton");
 
       // Variables for Player
       const player = {
@@ -424,7 +424,7 @@
         powerupSpawnInterval.min;
 
       // Add cooldown configuration
-      const SHOOT_COOLDOWN = 300; // 0.3 seconds cooldown
+      const SHOOT_COOLDOWN = 250; // 0.25 seconds cooldown
       let lastShootTime = 0;
 
       // Hidden feature
