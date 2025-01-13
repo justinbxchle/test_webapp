@@ -24,12 +24,8 @@ const GAME_CONSTANTS = {
 };
 
 // Canvas Scaling
-const SCALE_MINIMUM = 0.5;
 let gameScale = 1;
 
-const RADIUS_PLAYER = 30;
-const RADIUS_ZOMBIE = 20;
-const RADIUS_BULLET = 10;
 const RADIUS_POWERUP = 30;
 
 // SVG templates for hearts
@@ -71,22 +67,19 @@ const shootButton = document.getElementById("shootButton");
 const player = {
   x: canvas.width / 2,
   y: canvas.height / 2,
-  radius: RADIUS_PLAYER,
-  color: "blue",
+  radius: GAME_CONSTANTS.RADIUS.PLAYER,
+  color: GAME_CONSTANTS.COLOR.PLAYER,
   direction: { x: 0, y: 1 },
   hearts: 3,
   invulnerable: false,
-  invulnerabilityTime: 2000,
 };
 
 // Variables for Enemies
 const enemies = [];
-const SPEED_ZOMBIE = 2;
 let zombiesDefeated = 0;
 
 // Variables for Bullets
 const bullets = [];
-const SPEED_BULLET = 10;
 
 // Variables for Accelerometer
 let tiltX = 0;
@@ -101,20 +94,19 @@ let gameStarted = false;
 
 // Variables for Heart Power-Up
 const powerups = [];
-const powerupSpawnInterval = { min: 10000, max: 20000 }; // Random spawn between 10-20 seconds
 let nextPowerupSpawn =
   Date.now() +
-  Math.random() * (powerupSpawnInterval.max - powerupSpawnInterval.min) +
-  powerupSpawnInterval.min;
+  Math.random() *
+    (GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.max -
+      GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min) +
+  GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min;
 
 // Add cooldown configuration
-const SHOOT_COOLDOWN = 250; // 0.25 seconds cooldown
 let lastShootTime = 0;
 
 // Hidden feature
 player.consecutiveHearts = 0;
 player.isRainbowMode = false;
-player.rainbowModeDuration = 5000;
 
 /**
  * Triggers the RainbowEffect for Player
@@ -141,8 +133,8 @@ function triggerRainbowMode() {
           x: Math.cos((i / 8) * Math.PI * 2),
           y: Math.sin((i / 8) * Math.PI * 2),
         },
-        radius: RADIUS_BULLET * gameScale,
-        color: "yellow",
+        radius: GAME_CONSTANTS.RADIUS.BULLET * gameScale,
+        color: GAME_CONSTANTS.COLOR.BULLET,
       });
     }
   }, 300);
@@ -154,7 +146,7 @@ function triggerRainbowMode() {
     clearInterval(rainbowInterval);
     clearInterval(rainbowShootInterval);
     player.color = "blue"; // Reset to default color
-  }, player.rainbowModeDuration);
+  }, GAME_CONSTANTS.RAINBOW_MODE_DURATION);
 }
 
 /**
@@ -189,16 +181,16 @@ function scaleGameElements() {
   const scale = gameScale;
 
   // Scale player
-  player.radius = RADIUS_PLAYER * scale;
+  player.radius = GAME_CONSTANTS.RADIUS.PLAYER * scale;
 
   // Scale enemies
   enemies.forEach((enemy) => {
-    enemy.radius = RADIUS_ZOMBIE * scale;
+    enemy.radius = GAME_CONSTANTS.RADIUS.ENEMY * scale;
   });
 
   // Scale bullets
   bullets.forEach((bullet) => {
-    bullet.radius = RADIUS_BULLET * scale;
+    bullet.radius = GAME_CONSTANTS.RADIUS.BULLET * scale;
   });
 
   // Scale power-ups
@@ -486,8 +478,8 @@ function spawnZombie() {
   enemies.push({
     x,
     y,
-    radius: RADIUS_ZOMBIE * gameScale,
-    color: "red",
+    radius: GAME_CONSTANTS.RADIUS.ENEMY * gameScale,
+    color: GAME_CONSTANTS.COLOR.ENEMY,
     direction: { x: 0, y: 0 }, // Initialize direction
   });
 }
@@ -532,8 +524,8 @@ function updateEnemies() {
     const dy = player.y - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    enemy.x += (dx / dist) * SPEED_ZOMBIE;
-    enemy.y += (dy / dist) * SPEED_ZOMBIE;
+    enemy.x += (dx / dist) * GAME_CONSTANTS.SPEED.ENEMY;
+    enemy.y += (dy / dist) * GAME_CONSTANTS.SPEED.ENEMY;
 
     // Update enemy direction
     enemy.direction.x = dx / dist;
@@ -551,7 +543,7 @@ function shootBullets() {
   const timeSinceLastShot = currentTime - lastShootTime;
 
   // Check if still in cooldown
-  if (timeSinceLastShot < SHOOT_COOLDOWN) {
+  if (timeSinceLastShot < GAME_CONSTANTS.SHOOT_COOLDOWN) {
     return;
   }
 
@@ -569,8 +561,8 @@ function shootBullets() {
         x: Math.cos(baseAngle + i * spread),
         y: Math.sin(baseAngle + i * spread),
       },
-      radius: RADIUS_BULLET * gameScale,
-      color: "yellow",
+      radius: GAME_CONSTANTS.RADIUS.BULLET * gameScale,
+      color: GAME_CONSTANTS.COLOR.BULLET,
     });
   }
 
@@ -597,8 +589,8 @@ function drawBullets() {
 function updateBullets() {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const bullet = bullets[i];
-    bullet.x += bullet.direction.x * SPEED_BULLET;
-    bullet.y += bullet.direction.y * SPEED_BULLET;
+    bullet.x += bullet.direction.x * GAME_CONSTANTS.SPEED.BULLET;
+    bullet.y += bullet.direction.y * GAME_CONSTANTS.SPEED.BULLET;
 
     // Remove bullets that go out of bounds
     if (
@@ -633,8 +625,10 @@ function spawnHeartPowerup() {
   // Schedule next spawn
   nextPowerupSpawn =
     Date.now() +
-    Math.random() * (powerupSpawnInterval.max - powerupSpawnInterval.min) +
-    powerupSpawnInterval.min;
+    Math.random() *
+      (GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.max -
+        GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min) +
+    GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min;
 }
 
 /**
@@ -764,13 +758,13 @@ function makePlayerInvulnerable() {
     if (player.invulnerable) {
       player.pulseSpeed = 0.3; // Faster pulse speed for warning phase
     }
-  }, player.invulnerabilityTime - warningTime);
+  }, GAME_CONSTANTS.PLAYER_INVULNERABILITY_TIME - warningTime);
 
   // End invulnerability after the set time
   setTimeout(() => {
     player.invulnerable = false;
     player.color = "blue";
-  }, player.invulnerabilityTime);
+  }, GAME_CONSTANTS.PLAYER_INVULNERABILITY_TIME);
 }
 
 /**
@@ -902,8 +896,10 @@ function resetGame() {
   // Reset power-up spawn timer
   nextPowerupSpawn =
     Date.now() +
-    Math.random() * (powerupSpawnInterval.max - powerupSpawnInterval.min) +
-    powerupSpawnInterval.min;
+    Math.random() *
+      (GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.max -
+        GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min) +
+    GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min;
 
   // Reset UI
   updateHeartsDisplay();
