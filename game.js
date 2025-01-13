@@ -1,3 +1,4 @@
+// Constants and Configuration
 const GAME_CONSTANTS = {
   REFERENCE_WIDTH: 1920,
   REFERENCE_HEIGHT: 1080,
@@ -44,18 +45,13 @@ const brokenHeartSVG = `
 const HEART_PATH =
   "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
 
-// Elements for Canvas
+// DOM Elements
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-// Elements for Overlay
 const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlayTitle");
 const overlayMessage = document.getElementById("overlayMessage");
 const overlayButton = document.getElementById("overlayButton");
-
 const infoText = document.getElementById("infoText");
 const pauseText = document.getElementById("pauseText");
 const heartsDisplay = document.getElementById("heartsDisplay");
@@ -63,7 +59,7 @@ const permissionButton = document.getElementById("permissionButton");
 const pauseButton = document.getElementById("pauseButton");
 const shootButton = document.getElementById("shootButton");
 
-// Variables for Player
+// Player Object
 const player = {
   x: canvas.width / 2,
   y: canvas.height / 2,
@@ -72,82 +68,31 @@ const player = {
   direction: { x: 0, y: 1 },
   hearts: 3,
   invulnerable: false,
+  consecutiveHearts: 0,
+  isRainbowMode: false,
 };
 
-// Variables for Enemies
+// Game Entities
 const enemies = [];
-let zombiesDefeated = 0;
-
-// Variables for Bullets
 const bullets = [];
+const powerups = [];
 
-// Variables for Accelerometer
-let tiltX = 0;
-let tiltY = 0;
-let accelerometerValid = false; // Check if accelerometer works
-
-// Variables for Game in general
+// Game State Variables
 let game = "start"; // Possible states: 'start', 'pause', 'game-over', 'error'
 let controlMode = "none"; // Possible states: 'accelerometer' or 'mouse'
 let paused = false;
 let gameStarted = false;
-
-// Variables for Heart Power-Up
-const powerups = [];
+let zombiesDefeated = 0;
+let tiltX = 0;
+let tiltY = 0;
+let accelerometerValid = false; // Check if accelerometer works
+let lastShootTime = 0;
 let nextPowerupSpawn =
   Date.now() +
   Math.random() *
     (GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.max -
       GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min) +
   GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min;
-
-// Add cooldown configuration
-let lastShootTime = 0;
-
-// Hidden feature
-player.consecutiveHearts = 0;
-player.isRainbowMode = false;
-
-/**
- * Triggers the RainbowEffect for Player
- *
- */
-function triggerRainbowMode() {
-  if (player.isRainbowMode) return;
-
-  player.isRainbowMode = true;
-  player.invulnerable = true;
-
-  // Apply rainbow effect
-  let rainbowInterval = setInterval(() => {
-    player.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
-  }, 100);
-
-  // Shoot bullets in all directions
-  let rainbowShootInterval = setInterval(() => {
-    for (let i = 0; i < 8; i++) {
-      bullets.push({
-        x: player.x,
-        y: player.y,
-        direction: {
-          x: Math.cos((i / 8) * Math.PI * 2),
-          y: Math.sin((i / 8) * Math.PI * 2),
-        },
-        radius: GAME_CONSTANTS.RADIUS.BULLET * gameScale,
-        color: GAME_CONSTANTS.COLOR.BULLET,
-      });
-    }
-  }, 300);
-
-  // Stop rainbow mode after duration
-  setTimeout(() => {
-    player.isRainbowMode = false;
-    player.invulnerable = false;
-    clearInterval(rainbowInterval);
-    clearInterval(rainbowShootInterval);
-    player.color = "blue"; // Reset to default color
-  }, GAME_CONSTANTS.RAINBOW_MODE_DURATION);
-}
 
 /**
  * Sets the Canvas dimensions based on window size
@@ -206,6 +151,92 @@ function handleResize() {
   setCanvasDimensions();
   scaleGameElements();
   updateUIElementsPosition();
+}
+
+/**
+ * Initialize the Controls based on the device capabilities. Primary with accelerometer and fallback to mouse
+ */
+function initializeControls() {
+  if (window.DeviceOrientationEvent) {
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      permissionButton.style.display = "block";
+      permissionButton.addEventListener("click", (event) => {
+        requestAccelerometerPermission();
+        // Prevent the click from triggering the document click handler
+        event.stopPropagation();
+      });
+      infoText.innerText = "Click the button to enable Accelerometer control.";
+    } else {
+      controlMode = "accelerometer";
+      window.addEventListener(
+        "deviceorientation",
+        handleOrientationWithRotation
+      );
+      infoText.innerText = "Accelerometer control enabled.";
+
+      // Add a timeout to detect valid accelerometer data
+      setTimeout(() => {
+        if (!accelerometerValid) {
+          fallbackToMouse();
+        }
+      }, 1000);
+    }
+  } else {
+    fallbackToMouse();
+  }
+}
+
+/**
+ * Request the user for permission to use the accelerometer
+ */
+function requestAccelerometerPermission() {
+  if (typeof DeviceOrientationEvent.requestPermission === "function") {
+    DeviceOrientationEvent.requestPermission()
+      .then((response) => {
+        if (response === "granted") {
+          controlMode = "accelerometer";
+          window.addEventListener(
+            "deviceorientation",
+            handleOrientationWithRotation
+          );
+          permissionButton.style.display = "none";
+        } else {
+          fallbackToMouse();
+        }
+      })
+      .catch(() => {
+        fallbackToMouse();
+      });
+  } else {
+    controlMode = "accelerometer";
+    window.addEventListener("deviceorientation", handleOrientationWithRotation);
+
+    // Add a timeout to detect if accelerometer provides valid data
+    setTimeout(() => {
+      if (!accelerometerValid) {
+        fallbackToMouse();
+      }
+    }, 1000); // Check after 1 second
+  }
+}
+
+/**
+ * Fallback to Mouse controls if accelerometer is not available
+ *
+ * @returns {void}
+ */
+function fallbackToMouse() {
+  if (isTouchDevice()) {
+    showOverlay("error");
+    return;
+  }
+  controlMode = "mouse";
+  window.addEventListener("mousemove", handleMouseMove);
+  permissionButton.style.display = "none";
+  infoText.innerText =
+    "Controlling with Mouse (Accelerometer unavailable or request denied)";
+  pauseText.innerText = "Pause with ESC";
+  pauseButton.style.display = "none";
 }
 
 /**
@@ -285,92 +316,6 @@ function handleOrientationWithRotation(event) {
     infoText.innerText = "Controlling with Accelerometer";
     pauseButton.style.display = "block";
     shootButton.style.display = "block";
-  }
-}
-
-/**
- * Request the user for permission to use the accelerometer
- */
-function requestAccelerometerPermission() {
-  if (typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission()
-      .then((response) => {
-        if (response === "granted") {
-          controlMode = "accelerometer";
-          window.addEventListener(
-            "deviceorientation",
-            handleOrientationWithRotation
-          );
-          permissionButton.style.display = "none";
-        } else {
-          fallbackToMouse();
-        }
-      })
-      .catch(() => {
-        fallbackToMouse();
-      });
-  } else {
-    controlMode = "accelerometer";
-    window.addEventListener("deviceorientation", handleOrientationWithRotation);
-
-    // Add a timeout to detect if accelerometer provides valid data
-    setTimeout(() => {
-      if (!accelerometerValid) {
-        fallbackToMouse();
-      }
-    }, 1000); // Check after 1 second
-  }
-}
-
-/**
- * Fallback to Mouse controls if accelerometer is not available
- *
- * @returns {void}
- */
-function fallbackToMouse() {
-  if (isTouchDevice()) {
-    showOverlay("error");
-    return;
-  }
-  controlMode = "mouse";
-  window.addEventListener("mousemove", handleMouseMove);
-  permissionButton.style.display = "none";
-  infoText.innerText =
-    "Controlling with Mouse (Accelerometer unavailable or request denied)";
-  pauseText.innerText = "Pause with ESC";
-  pauseButton.style.display = "none";
-}
-
-/**
- * Initialize the Controls based on the device capabilities. Primary with accelerometer and fallback to mouse
- */
-function initializeControls() {
-  if (window.DeviceOrientationEvent) {
-    if (typeof DeviceOrientationEvent.requestPermission === "function") {
-      permissionButton.style.display = "block";
-      permissionButton.addEventListener("click", (event) => {
-        requestAccelerometerPermission();
-        // Prevent the click from triggering the document click handler
-        event.stopPropagation();
-      });
-      infoText.innerText = "Click the button to enable Accelerometer control.";
-    } else {
-      controlMode = "accelerometer";
-      window.addEventListener(
-        "deviceorientation",
-        handleOrientationWithRotation
-      );
-      infoText.innerText = "Accelerometer control enabled.";
-
-      // Add a timeout to detect valid accelerometer data
-      setTimeout(() => {
-        if (!accelerometerValid) {
-          fallbackToMouse();
-        }
-      }, 1000);
-    }
-  } else {
-    fallbackToMouse();
   }
 }
 
@@ -768,6 +713,47 @@ function makePlayerInvulnerable() {
 }
 
 /**
+ * Triggers the RainbowEffect for Player
+ *
+ */
+function triggerRainbowMode() {
+  if (player.isRainbowMode) return;
+
+  player.isRainbowMode = true;
+  player.invulnerable = true;
+
+  // Apply rainbow effect
+  let rainbowInterval = setInterval(() => {
+    player.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+  }, 100);
+
+  // Shoot bullets in all directions
+  let rainbowShootInterval = setInterval(() => {
+    for (let i = 0; i < 8; i++) {
+      bullets.push({
+        x: player.x,
+        y: player.y,
+        direction: {
+          x: Math.cos((i / 8) * Math.PI * 2),
+          y: Math.sin((i / 8) * Math.PI * 2),
+        },
+        radius: GAME_CONSTANTS.RADIUS.BULLET * gameScale,
+        color: GAME_CONSTANTS.COLOR.BULLET,
+      });
+    }
+  }, 300);
+
+  // Stop rainbow mode after duration
+  setTimeout(() => {
+    player.isRainbowMode = false;
+    player.invulnerable = false;
+    clearInterval(rainbowInterval);
+    clearInterval(rainbowShootInterval);
+    player.color = "blue"; // Reset to default color
+  }, GAME_CONSTANTS.RAINBOW_MODE_DURATION);
+}
+
+/**
  * Checks for collisions between {@link Bullet} - {@link Zombie} AND {@link Player} - {@link Zombie}
  *
  * @returns {void}
@@ -817,20 +803,6 @@ function checkCollisions() {
 }
 
 /**
- * Starts the Game
- */
-function startGame() {
-  gameStarted = true;
-  hideOverlay();
-  resetGame();
-
-  // Re-initialize controls if they were lost
-  if (controlMode === "none") {
-    initializeControls();
-  }
-}
-
-/**
  * Displays the current Game State
  *
  * @param {*} state The state that should be displayed via the Overlay
@@ -869,6 +841,20 @@ function showOverlay(state) {
  */
 function hideOverlay() {
   overlay.classList.remove("active");
+}
+
+/**
+ * Starts the Game
+ */
+function startGame() {
+  gameStarted = true;
+  hideOverlay();
+  resetGame();
+
+  // Re-initialize controls if they were lost
+  if (controlMode === "none") {
+    initializeControls();
+  }
 }
 
 /**
@@ -1056,16 +1042,5 @@ function init() {
   showOverlay("start");
   gameLoop();
 }
-
-// Add this to your existing CSS
-const style = document.createElement("style");
-style.textContent = `
-      @keyframes pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-          100% { transform: scale(1); }
-      }
-      `;
-document.head.appendChild(style);
 
 init();
