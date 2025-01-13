@@ -1,27 +1,65 @@
-import { GAME_CONSTANTS } from "constants.js";
+const GAME_CONSTANTS = {
+  REFERENCE_WIDTH: 1920,
+  REFERENCE_HEIGHT: 1080,
+  SCALE_MINIMUM: 0.5,
+  RADIUS: {
+    PLAYER: 30,
+    ENEMY: 20,
+    BULLET: 10,
+    POWERUP: 30,
+  },
+  SPEED: {
+    ENEMY: 2,
+    BULLET: 10,
+  },
+  COLOR: {
+    PLAYER: "blue",
+    ENEMY: "red",
+    BULLET: "yellow",
+  },
+  SHOOT_COOLDOWN: 250,
+  POWERUP_SPAWN_INTERVAL: { min: 10000, max: 20000 },
+  PLAYER_INVULNERABILITY_TIME: 2000,
+  RAINBOW_MODE_DURATION: 5000,
+};
 
-// SVG templates for Hearts
+// Canvas Scaling
+const SCALE_MINIMUM = 0.5;
+let gameScale = 1;
+
+const RADIUS_PLAYER = 30;
+const RADIUS_ZOMBIE = 20;
+const RADIUS_BULLET = 10;
+const RADIUS_POWERUP = 30;
+
+// SVG templates for hearts
 const fullHeartSVG = `
-        <svg class="heart" viewBox="0 0 24 24">
-        <path class="heart-full" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-        </svg>`;
+              <svg class="heart" viewBox="0 0 24 24">
+              <path class="heart-full" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>`;
 
 const brokenHeartSVG = `
-        <svg class="heart" viewBox="0 0 24 24">
-        <path class="heart-broken" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-        <path class="heart-broken" d="M12 5L9 9h6l-3 4"/>
-        </svg>`;
+              <svg class="heart" viewBox="0 0 24 24">
+              <path class="heart-broken" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              <path class="heart-broken" d="M12 5L9 9h6l-3 4"/>
+              </svg>`;
 
+// SVG for Heart
 const HEART_PATH =
   "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
 
-// DOM Elements
+// Elements for Canvas
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Elements for Overlay
 const overlay = document.getElementById("overlay");
 const overlayTitle = document.getElementById("overlayTitle");
 const overlayMessage = document.getElementById("overlayMessage");
 const overlayButton = document.getElementById("overlayButton");
+
 const infoText = document.getElementById("infoText");
 const pauseText = document.getElementById("pauseText");
 const heartsDisplay = document.getElementById("heartsDisplay");
@@ -29,41 +67,54 @@ const permissionButton = document.getElementById("permissionButton");
 const pauseButton = document.getElementById("pauseButton");
 const shootButton = document.getElementById("shootButton");
 
-// Game Entities
-const zombies = [];
-const bullets = [];
-const powerups = [];
-
-// Game State Variables
-let gameScale = 1;
-let gameStarted = false;
-let paused = false;
-let zombiesDefeated = 0;
-let controlMode = "none"; // Possible states: 'accelerometer' or 'mouse'
-let game = "start"; // Possible states: 'start', 'pause', 'game-over', 'error'
-let lastShootTime = 0;
-let nextPowerupSpawn =
-  Date.now() +
-  Math.random() *
-    (GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.max -
-      GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min) +
-  GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min;
-let tiltX = 0,
-  tiltY = 0;
-let accelerometerValid = false;
-
-// Player Object
+// Variables for Player
 const player = {
   x: canvas.width / 2,
   y: canvas.height / 2,
-  radius: GAME_CONSTANTS.RADIUS.PLAYER,
-  color: GAME_CONSTANTS.COLOR.PLAYER,
+  radius: RADIUS_PLAYER,
+  color: "blue",
   direction: { x: 0, y: 1 },
   hearts: 3,
   invulnerable: false,
-  consecutiveHearts: 0,
-  isRainbowMode: false,
+  invulnerabilityTime: 2000,
 };
+
+// Variables for Enemies
+const enemies = [];
+const SPEED_ZOMBIE = 2;
+let zombiesDefeated = 0;
+
+// Variables for Bullets
+const bullets = [];
+const SPEED_BULLET = 10;
+
+// Variables for Accelerometer
+let tiltX = 0;
+let tiltY = 0;
+let accelerometerValid = false; // Check if accelerometer works
+
+// Variables for Game in general
+let game = "start"; // Possible states: 'start', 'pause', 'game-over', 'error'
+let controlMode = "none"; // Possible states: 'accelerometer' or 'mouse'
+let paused = false;
+let gameStarted = false;
+
+// Variables for Heart Power-Up
+const powerups = [];
+const powerupSpawnInterval = { min: 10000, max: 20000 }; // Random spawn between 10-20 seconds
+let nextPowerupSpawn =
+  Date.now() +
+  Math.random() * (powerupSpawnInterval.max - powerupSpawnInterval.min) +
+  powerupSpawnInterval.min;
+
+// Add cooldown configuration
+const SHOOT_COOLDOWN = 250; // 0.25 seconds cooldown
+let lastShootTime = 0;
+
+// Hidden feature
+player.consecutiveHearts = 0;
+player.isRainbowMode = false;
+player.rainbowModeDuration = 5000;
 
 /**
  * Triggers the RainbowEffect for Player
@@ -90,8 +141,8 @@ function triggerRainbowMode() {
           x: Math.cos((i / 8) * Math.PI * 2),
           y: Math.sin((i / 8) * Math.PI * 2),
         },
-        radius: GAME_CONSTANTS.RADIUS.BULLET * gameScale,
-        color: GAME_CONSTANTS.COLOR.BULLET,
+        radius: RADIUS_BULLET * gameScale,
+        color: "yellow",
       });
     }
   }, 300);
@@ -102,8 +153,8 @@ function triggerRainbowMode() {
     player.invulnerable = false;
     clearInterval(rainbowInterval);
     clearInterval(rainbowShootInterval);
-    player.color = GAME_CONSTANTS.COLOR.PLAYER; // Reset to default color
-  }, GAME_CONSTANTS.RAINBOW_MODE_DURATION);
+    player.color = "blue"; // Reset to default color
+  }, player.rainbowModeDuration);
 }
 
 /**
@@ -118,8 +169,8 @@ function setCanvasDimensions() {
  * Sets the game scale based on the canvas size
  */
 function setGameScale() {
-  const scaleX = canvas.width / REFERENCE_WIDTH;
-  const scaleY = canvas.height / REFERENCE_HEIGHT;
+  const scaleX = canvas.width / GAME_CONSTANTS.REFERENCE_WIDTH;
+  const scaleY = canvas.height / GAME_CONSTANTS.REFERENCE_HEIGHT;
   const scale = Math.min(scaleX, scaleY);
   if (scale < GAME_CONSTANTS.SCALE_MINIMUM) {
     gameScale = GAME_CONSTANTS.SCALE_MINIMUM;
@@ -138,21 +189,21 @@ function scaleGameElements() {
   const scale = gameScale;
 
   // Scale player
-  player.radius = GAME_CONSTANTS.RADIUS.PLAYER * scale;
+  player.radius = RADIUS_PLAYER * scale;
 
-  // Scale zombies
-  zombies.forEach((zombie) => {
-    zombie.radius = GAME_CONSTANTS.RADIUS.ZOMBIE * scale;
+  // Scale enemies
+  enemies.forEach((enemy) => {
+    enemy.radius = RADIUS_ZOMBIE * scale;
   });
 
   // Scale bullets
   bullets.forEach((bullet) => {
-    bullet.radius = GAME_CONSTANTS.RADIUS.BULLET * scale;
+    bullet.radius = RADIUS_BULLET * scale;
   });
 
   // Scale power-ups
   powerups.forEach((powerup) => {
-    powerup.radius = GAME_CONSTANTS.RADIUS.POWERUP * scale;
+    powerup.radius = RADIUS_POWERUP * scale;
   });
 }
 
@@ -176,6 +227,10 @@ function handleMouseMove(event) {
 
   tiltX = x;
   tiltY = y;
+
+  if (controlMode === "mouse") {
+    infoText.innerText = "Controlling with Mouse";
+  }
 }
 
 /**
@@ -192,7 +247,6 @@ function handleOrientationWithRotation(event) {
 
   accelerometerValid = true;
 
-  // Get the current screen orientation
   const orientation =
     (screen.orientation || {}).type ||
     screen.msOrientation ||
@@ -409,7 +463,7 @@ function updatePlayer() {
 }
 
 /**
- * Spawn a new zombie at a random edge of the canvas
+ * Spawn a new enemy at a random edge of the canvas
  */
 function spawnZombie() {
   const side = Math.floor(Math.random() * 4);
@@ -429,38 +483,38 @@ function spawnZombie() {
     y = Math.random() * canvas.height;
   }
 
-  zombies.push({
+  enemies.push({
     x,
     y,
     radius: RADIUS_ZOMBIE * gameScale,
-    color: GAME_CONSTANTS.COLOR.ZOMBIE,
+    color: "red",
     direction: { x: 0, y: 0 }, // Initialize direction
   });
 }
 
 /**
- * Draws the zombies on the canvas
+ * Draws the enemies on the canvas
  */
-function drawZombies() {
-  zombies.forEach((zombie) => {
+function drawEnemies() {
+  enemies.forEach((enemy) => {
     ctx.save();
-    ctx.translate(zombie.x, zombie.y);
+    ctx.translate(enemy.x, enemy.y);
 
-    const angle = Math.atan2(zombie.direction.y, zombie.direction.x);
+    const angle = Math.atan2(enemy.direction.y, enemy.direction.x);
     ctx.rotate(angle);
 
     // Draw body (circle)
     ctx.beginPath();
-    ctx.arc(0, 0, zombie.radius, 0, Math.PI * 2);
-    ctx.fillStyle = zombie.color;
+    ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
+    ctx.fillStyle = enemy.color;
     ctx.fill();
     ctx.closePath();
 
     // Draw front (triangle)
     ctx.beginPath();
-    ctx.moveTo(zombie.radius, 0);
-    ctx.lineTo(zombie.radius / 2, -zombie.radius / 2);
-    ctx.lineTo(zombie.radius / 2, zombie.radius / 2);
+    ctx.moveTo(enemy.radius, 0);
+    ctx.lineTo(enemy.radius / 2, -enemy.radius / 2);
+    ctx.lineTo(enemy.radius / 2, enemy.radius / 2);
     ctx.closePath();
     ctx.fillStyle = "white";
     ctx.fill();
@@ -470,20 +524,20 @@ function drawZombies() {
 }
 
 /**
- * Updates the zombie positions based on the player position
+ * Updates the enemy positions based on the player position
  */
-function updateZombies() {
-  zombies.forEach((zombie) => {
-    const dx = player.x - zombie.x;
-    const dy = player.y - zombie.y;
+function updateEnemies() {
+  enemies.forEach((enemy) => {
+    const dx = player.x - enemy.x;
+    const dy = player.y - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    zombie.x += (dx / dist) * GAME_CONSTANTS.SPEED.ZOMBIE;
-    zombie.y += (dy / dist) * GAME_CONSTANTS.SPEED.ZOMBIE;
+    enemy.x += (dx / dist) * SPEED_ZOMBIE;
+    enemy.y += (dy / dist) * SPEED_ZOMBIE;
 
-    // Update zombie direction
-    zombie.direction.x = dx / dist;
-    zombie.direction.y = dy / dist;
+    // Update enemy direction
+    enemy.direction.x = dx / dist;
+    enemy.direction.y = dy / dist;
   });
 }
 
@@ -497,7 +551,7 @@ function shootBullets() {
   const timeSinceLastShot = currentTime - lastShootTime;
 
   // Check if still in cooldown
-  if (timeSinceLastShot < GAME_CONSTANTS.SHOOT_COOLDOWN) {
+  if (timeSinceLastShot < SHOOT_COOLDOWN) {
     return;
   }
 
@@ -516,7 +570,7 @@ function shootBullets() {
         y: Math.sin(baseAngle + i * spread),
       },
       radius: RADIUS_BULLET * gameScale,
-      color: GAME_CONSTANTS.COLOR.BULLET,
+      color: "yellow",
     });
   }
 
@@ -543,8 +597,8 @@ function drawBullets() {
 function updateBullets() {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const bullet = bullets[i];
-    bullet.x += bullet.direction.x * GAME_CONSTANTS.SPEED.BULLET;
-    bullet.y += bullet.direction.y * GAME_CONSTANTS.SPEED.BULLET;
+    bullet.x += bullet.direction.x * SPEED_BULLET;
+    bullet.y += bullet.direction.y * SPEED_BULLET;
 
     // Remove bullets that go out of bounds
     if (
@@ -579,10 +633,8 @@ function spawnHeartPowerup() {
   // Schedule next spawn
   nextPowerupSpawn =
     Date.now() +
-    Math.random() *
-      (GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.max -
-        GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min) +
-    GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min;
+    Math.random() * (powerupSpawnInterval.max - powerupSpawnInterval.min) +
+    powerupSpawnInterval.min;
 }
 
 /**
@@ -717,8 +769,8 @@ function makePlayerInvulnerable() {
   // End invulnerability after the set time
   setTimeout(() => {
     player.invulnerable = false;
-    player.color = GAME_CONSTANTS.COLOR.PLAYER; // Reset to default color
-  }, GAME_CONSTANTS.PLAYER_INVULNERABILITY_TIME);
+    player.color = "blue";
+  }, player.invulnerabilityTime);
 }
 
 /**
@@ -729,18 +781,18 @@ function makePlayerInvulnerable() {
 function checkCollisions() {
   if (paused || !gameStarted) return;
 
-  // Check bullet-zombie collisions
-  for (let i = zombies.length - 1; i >= 0; i--) {
-    const zombie = zombies[i];
+  // Check bullet-enemy collisions
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
 
     for (let j = bullets.length - 1; j >= 0; j--) {
       const bullet = bullets[j];
-      const dx = zombie.x - bullet.x;
-      const dy = zombie.y - bullet.y;
+      const dx = enemy.x - bullet.x;
+      const dy = enemy.y - bullet.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist < zombie.radius + bullet.radius) {
-        zombies.splice(i, 1);
+      if (dist < enemy.radius + bullet.radius) {
+        enemies.splice(i, 1);
         bullets.splice(j, 1);
         zombiesDefeated++; // Increment score
         break;
@@ -748,8 +800,8 @@ function checkCollisions() {
     }
   }
 
-  // Check player-zombie collisions
-  zombies.forEach((zombie, index) => {
+  // Check player-enemy collisions
+  enemies.forEach((zombie, index) => {
     const dx = player.x - zombie.x;
     const dy = player.y - zombie.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -764,7 +816,7 @@ function checkCollisions() {
         showOverlay("game-over");
       } else {
         makePlayerInvulnerable();
-        zombies.splice(index, 1);
+        enemies.splice(index, 1);
       }
     }
   });
@@ -794,7 +846,7 @@ function showOverlay(state) {
   overlay.classList.add("active");
 
   if (state === "start") {
-    overlayTitle.textContent = "Zombie Survival";
+    overlayTitle.textContent = "Crimson Swarm";
     overlayMessage.innerHTML =
       "Use accelerometer or mouse to move<br>Click or tap to shoot<br>Collect hearts to restore your health";
     overlayButton.textContent = "Start Game";
@@ -806,7 +858,7 @@ function showOverlay(state) {
     overlayButton.onclick = togglePause;
   } else if (state === "game-over") {
     overlayTitle.textContent = "Game Over";
-    overlayMessage.textContent = `Zombies defeated: ${zombiesDefeated}`;
+    overlayMessage.textContent = `Enemies defeated: ${zombiesDefeated}`;
     overlayButton.textContent = "Play Again";
     overlayButton.onclick = startGame;
   } else if (state === "error") {
@@ -826,7 +878,7 @@ function hideOverlay() {
 }
 
 /**
- * Resets the Game to its initial state
+ * Hides the current Overlay
  */
 function resetGame() {
   // Reset player state
@@ -834,11 +886,11 @@ function resetGame() {
   player.y = canvas.height / 2;
   player.hearts = 3;
   player.invulnerable = false;
-  player.color = GAME_CONSTANTS.COLOR.PLAYER;
+  player.color = "blue";
   player.direction = { x: 0, y: 1 };
 
   // Clear game arrays
-  zombies.length = 0;
+  enemies.length = 0;
   bullets.length = 0;
   powerups.length = 0;
   zombiesDefeated = 0;
@@ -850,10 +902,8 @@ function resetGame() {
   // Reset power-up spawn timer
   nextPowerupSpawn =
     Date.now() +
-    Math.random() *
-      (GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.max -
-        GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min) +
-    GAME_CONSTANTS.POWERUP_SPAWN_INTERVAL.min;
+    Math.random() * (powerupSpawnInterval.max - powerupSpawnInterval.min) +
+    powerupSpawnInterval.min;
 
   // Reset UI
   updateHeartsDisplay();
@@ -875,8 +925,8 @@ function gameLoop() {
 
     drawPlayer();
     updatePlayer();
-    drawZombies();
-    updateZombies();
+    drawEnemies();
+    updateEnemies();
     drawBullets();
     updateBullets();
 
@@ -1010,5 +1060,16 @@ function init() {
   showOverlay("start");
   gameLoop();
 }
+
+// Add this to your existing CSS
+const style = document.createElement("style");
+style.textContent = `
+      @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); }
+      }
+      `;
+document.head.appendChild(style);
 
 init();
